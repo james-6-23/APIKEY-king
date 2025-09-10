@@ -62,6 +62,22 @@ class Config:
     FILE_PATH_BLACKLIST_STR = os.getenv("FILE_PATH_BLACKLIST", "readme,docs,doc/,.md,sample,tutorial")
     FILE_PATH_BLACKLIST = [token.strip().lower() for token in FILE_PATH_BLACKLIST_STR.split(',') if token.strip()]
 
+    # ModelScope key extraction (ms-uuid) configuration
+    TARGET_BASE_URLS_STR = os.getenv(
+        "TARGET_BASE_URLS",
+        "https://api-inference.modelscope.cn/v1/"
+    )
+    TARGET_BASE_URLS = [u.strip() for u in TARGET_BASE_URLS_STR.split(',') if u.strip()]
+
+    # Whether to use a loose key pattern (requires proximity filtering to avoid noise)
+    MS_USE_LOOSE_PATTERN = os.getenv("MS_USE_LOOSE_PATTERN", "false")
+    # Character distance threshold between base_url occurrence and key match (effective when using loose pattern)
+    MS_PROXIMITY_CHARS = int(os.getenv("MS_PROXIMITY_CHARS", "0"))
+    # Require key context words around the match, e.g., key/token/authorization
+    MS_REQUIRE_KEY_CONTEXT = os.getenv("MS_REQUIRE_KEY_CONTEXT", "false")
+    # If true, when extracting ModelScope keys, skip any validation and just save keys
+    MODELSCOPE_EXTRACT_ONLY = os.getenv("MODELSCOPE_EXTRACT_ONLY", "true")
+
     @classmethod
     def parse_bool(cls, value: str) -> bool:
         """
@@ -176,6 +192,11 @@ logger.info(f"QUERIES_FILE: {Config.QUERIES_FILE}")
 logger.info(f"SCANNED_SHAS_FILE: {Config.SCANNED_SHAS_FILE}")
 logger.info(f"HAJIMI_CHECK_MODEL: {Config.HAJIMI_CHECK_MODEL}")
 logger.info(f"FILE_PATH_BLACKLIST: {len(Config.FILE_PATH_BLACKLIST)} items")
+logger.info(f"TARGET_BASE_URLS: {len(Config.TARGET_BASE_URLS)} configured")
+logger.info(f"MS_USE_LOOSE_PATTERN: {Config.parse_bool(Config.MS_USE_LOOSE_PATTERN)}")
+logger.info(f"MS_PROXIMITY_CHARS: {Config.MS_PROXIMITY_CHARS}")
+logger.info(f"MS_REQUIRE_KEY_CONTEXT: {Config.parse_bool(Config.MS_REQUIRE_KEY_CONTEXT)}")
+logger.info(f"MODELSCOPE_EXTRACT_ONLY: {Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY)}")
 logger.info(f"*" * 30 + " CONFIG END " + "*" * 30)
 
 # 创建全局配置实例

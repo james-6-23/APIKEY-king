@@ -461,6 +461,9 @@ class FileManager:
                 f.write("AIzaSy in:file\n")
                 f.write("AIzaSy in:file filename:.env\n")
                 f.write("AIzaSy in:file filename:env.example\n")
+                f.write("\n")
+                f.write("# ModelScope base_url 匹配示例（限制为包含指定API地址的文件）\n")
+                f.write("\"https://api-inference.modelscope.cn/v1/\" in:file\n")
             logger.info(f"Created default queries file: {queries_file}")
         except Exception as e:
             logger.error(f"Failed to create default queries file {queries_file}: {e}")

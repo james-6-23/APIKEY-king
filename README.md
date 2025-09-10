@@ -1,5 +1,7 @@
 # 🎪 Hajimi King 🏆
 
+[查看变更日志](CHANGELOG.md)
+
 人人都是哈基米大王  👑  
 
 注意： 本项目正处于beta期间，所以功能、结构、接口等等都有可能变化，不保证稳定性，请自行承担风险。
@@ -74,8 +76,11 @@ uv pip install -r pyproject.toml
 # 创建数据目录
 mkdir -p data
 
-# 运行程序
-python app/hajimi_king.py
+# 运行程序（兼容模式：未命中 ms-key 时回退到 Gemini 提取）
+python app/hajimi_king.py --mode compatible
+
+# 仅 ModelScope 模式：只提取包含 base_url 的 ms-key，不回退
+python app/hajimi_king.py --mode modelscope-only
 ```
 
 ### 5. 本地运行管理 🎮
@@ -207,6 +212,13 @@ PROXY=http://localhost:1080
 | `VALID_KEY_DETAIL_PREFIX`        | `logs/keys_valid_detail_`          | 有效密钥文件名前缀 🗝️ |
 | `SCANNED_SHAS_FILE`              | `scanned_shas.txt`                 | 已扫描文件SHA记录文件名 📋 |
 | `FILE_PATH_BLACKLIST`            | `readme,docs,doc/,.md,example,...` | 文件路径黑名单，逗号分隔 🚫 |
+
+#### ModelScope 提取配置（仅提取、不校验）
+- `TARGET_BASE_URLS`: 逗号分隔的 base_url 或域名，文件包含其一才会尝试提取（默认含 `https://api-inference.modelscope.cn/v1/`）。
+- `MS_USE_LOOSE_PATTERN`: 是否使用宽松匹配（默认 false）。
+- `MS_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
+- `MS_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
+- `MODELSCOPE_EXTRACT_ONLY`: 仅提取并保存，不做验证（默认 true）。
 
 ### 配置文件示例 💫
 

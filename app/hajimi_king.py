@@ -1,11 +1,12 @@
 import os
 import random
 import re
+import argparse
 import sys
 import time
 import traceback
 from datetime import datetime, timedelta
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Union, Any, Tuple
 
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
@@ -85,6 +86,89 @@ def extract_keys_from_content(content: str) -> List[str]:
     return re.findall(pattern, content)
 
 
+def _contains_base_url(content: str, base_urls: List[str]) -> Tuple[bool, List[int]]:
+    """检查内容中是否包含任意指定的base_url，并返回出现位置索引列表"""
+    if not base_urls:
+        return False, []
+    lc = content.lower()
+    positions: List[int] = []
+    for url in base_urls:
+        if not url:
+            continue
+        u = url.lower()
+        start = 0
+        while True:
+            idx = lc.find(u, start)
+            if idx == -1:
+                break
+            positions.append(idx)
+            start = idx + 1
+    return (len(positions) > 0), positions
+
+
+def extract_ms_keys_for_modelscope(content: str) -> List[str]:
+    """
+    当同一文件中包含 Config.TARGET_BASE_URLS 任一值时，提取形态为 ms-UUID 的key。
+    不做外部验证，仅基于形态与上下文（可选）筛选。
+    受控于以下配置：
+      - TARGET_BASE_URLS
+      - MS_USE_LOOSE_PATTERN (bool)
+      - MS_PROXIMITY_CHARS (int, 当使用宽松模式时建议>0)
+      - MS_REQUIRE_KEY_CONTEXT (bool)
+    """
+    base_urls = Config.TARGET_BASE_URLS
+    has_base, base_positions = _contains_base_url(content, base_urls)
+    if not has_base:
+        return []
+
+    # 正则：严格UUID或宽松长度
+    strict_pat = r'(?i)\bms-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b'
+    loose_pat = r'(?i)\bms-[0-9a-f-]{30,}\b'
+    use_loose = Config.parse_bool(Config.MS_USE_LOOSE_PATTERN)
+    pattern = loose_pat if use_loose else strict_pat
+
+    proximity_chars = Config.MS_PROXIMITY_CHARS if use_loose else 0
+    require_ctx = Config.parse_bool(Config.MS_REQUIRE_KEY_CONTEXT)
+    ctx_re = re.compile(r"(key|token|secret|authorization|api[-_ ]?key)", re.IGNORECASE)
+
+    results: List[str] = []
+    for m in re.finditer(pattern, content):
+        k = m.group(0)
+        # 过滤明显占位符
+        if k.lower() == "ms-00000000-0000-0000-0000-000000000000":
+            continue
+
+        if proximity_chars and base_positions:
+            pos = m.start()
+            near = any(abs(pos - bp) <= proximity_chars for bp in base_positions)
+            if not near:
+                continue
+
+        if require_ctx:
+            start = max(0, m.start() - 80)
+            end = min(len(content), m.end() + 80)
+            snippet = content[start:end]
+            if not ctx_re.search(snippet):
+                continue
+
+        results.append(k)
+
+    # 去重且保序
+    seen = set()
+    deduped = [x for x in results if not (x in seen or seen.add(x))]
+    return deduped
+
+
+def _parse_cli_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Hajimi King")
+    parser.add_argument(
+        "--mode",
+        choices=["modelscope-only", "compatible"],
+        help="modelscope-only: 仅提取 ms-key，不回退到 Gemini；compatible: 未命中 ms-key 时回退到原有逻辑",
+    )
+    return parser.parse_args()
+
+
 def should_skip_item(item: Dict[str, Any], checkpoint: Checkpoint) -> tuple[bool, str]:
     """
     检查是否应该跳过处理此item
@@ -147,6 +231,27 @@ def process_item(item: Dict[str, Any]) -> tuple:
         logger.warning(f"⚠️ Failed to fetch content for file: {file_url}")
         return 0, 0
 
+    # 优先尝试ModelScope提取逻辑（当配置了目标base_url时）
+    ms_keys: List[str] = []
+    try:
+        if Config.TARGET_BASE_URLS:
+            ms_keys = extract_ms_keys_for_modelscope(content)
+    except Exception as e:
+        logger.error(f"ModelScope key extraction error: {e}")
+
+    if ms_keys:
+        logger.info(f"🔑 Found {len(ms_keys)} ModelScope key(s) (no validation)")
+        file_manager.save_valid_keys(repo_name, file_path, file_url, ms_keys)
+        logger.info(f"💾 Saved {len(ms_keys)} key(s)")
+        # ModelScope模式按需仅保存，不入外部同步队列
+        return len(ms_keys), 0
+
+    # 若启用仅ModelScope模式，则不回退到Gemini提取
+    if Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY):
+        logger.info("ℹ️ ModelScope-only mode enabled, no ms-key found, skipping Gemini extraction")
+        return 0, 0
+
+    # 默认回退到原有的Gemini密钥提取
     keys = extract_keys_from_content(content)
 
     # 过滤占位符密钥
@@ -252,6 +357,20 @@ def reset_skip_stats():
 
 def main():
     start_time = datetime.now()
+
+    # 解析命令行参数，优先覆盖仅 ModelScope 模式
+    try:
+        args = _parse_cli_args()
+        if getattr(args, "mode", None):
+            # CLI 覆盖环境变量：仅本进程生效
+            Config.MODELSCOPE_EXTRACT_ONLY = (
+                "true" if args.mode == "modelscope-only" else "false"
+            )
+            logger.info(
+                f"🧭 CLI 模式: MODELSCOPE_EXTRACT_ONLY -> {Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY)} ({args.mode})"
+            )
+    except SystemExit:
+        return
 
     # 打印系统启动信息
     logger.info("=" * 60)
