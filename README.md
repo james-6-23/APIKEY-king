@@ -6,6 +6,41 @@
 
 注意： 本项目正处于beta期间，所以功能、结构、接口等等都有可能变化，不保证稳定性，请自行承担风险。
 
+## ⚡ 快速开始（仅 ModelScope）
+
+1) 配置 `.env`（不要提交到仓库）
+
+```bash
+GITHUB_TOKENS=ghp_xxx1,ghp_xxx2
+DATA_PATH=./data
+
+# 仅提取 ModelScope ms-key（默认已开启），命令行可覆盖
+MODELSCOPE_EXTRACT_ONLY=true
+TARGET_BASE_URLS=https://api-inference.modelscope.cn/v1/,api-inference.modelscope.cn
+# 如需放宽匹配：
+# MS_USE_LOOSE_PATTERN=true
+# MS_PROXIMITY_CHARS=800
+# MS_REQUIRE_KEY_CONTEXT=true
+```
+
+2) 准备查询 `data/queries.txt`
+
+```bash
+"https://api-inference.modelscope.cn/v1/" in:file
+api-inference.modelscope.cn in:file
+```
+
+3) 运行（仅 ModelScope 模式）
+
+```bash
+python app/hajimi_king.py --mode modelscope-only
+```
+
+4) 查看输出
+
+- Key 列表：`data/keys/keys_valid_YYYYMMDD.txt`
+- 详细日志：`data/logs/keys_valid_detailYYYYMMDD.log`
+
 ## 🚀 核心功能
 
 1. **GitHub搜索Gemini Key** 🔍 - 基于自定义查询表达式搜索GitHub代码中的API密钥
@@ -155,6 +190,25 @@ docker-compose up -d
 
 # 查看日志
 docker-compose logs -f
+```
+
+### Docker 场景下的 .env 示例（仅 ModelScope）
+
+```bash
+# GitHub 访问令牌（必填）
+GITHUB_TOKENS=ghp_xxx1,ghp_xxx2
+
+# 数据卷挂载到容器内路径（compose 已映射 /app/data）
+DATA_PATH=/app/data
+
+# ModelScope 提取配置
+TARGET_BASE_URLS=https://api-inference.modelscope.cn/v1/,api-inference.modelscope.cn
+MODELSCOPE_EXTRACT_ONLY=true
+
+# 可选：宽松匹配与距离约束（召回不足时再开启）
+# MS_USE_LOOSE_PATTERN=true
+# MS_PROXIMITY_CHARS=800
+# MS_REQUIRE_KEY_CONTEXT=true
 ```
 
 ### 代理配置
