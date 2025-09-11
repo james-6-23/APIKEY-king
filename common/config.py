@@ -26,25 +26,16 @@ class Config:
             if proxy_str:
                 PROXY_LIST.append(proxy_str)
     
-    # Gemini Balancer配置
-    GEMINI_BALANCER_SYNC_ENABLED = os.getenv("GEMINI_BALANCER_SYNC_ENABLED", "false")
-    GEMINI_BALANCER_URL = os.getenv("GEMINI_BALANCER_URL", "")
-    GEMINI_BALANCER_AUTH = os.getenv("GEMINI_BALANCER_AUTH", "")
-
-    # GPT Load Balancer Configuration
-    GPT_LOAD_SYNC_ENABLED = os.getenv("GPT_LOAD_SYNC_ENABLED", "false")
-    GPT_LOAD_URL = os.getenv('GPT_LOAD_URL', '')
-    GPT_LOAD_AUTH = os.getenv('GPT_LOAD_AUTH', '')
-    GPT_LOAD_GROUP_NAME = os.getenv('GPT_LOAD_GROUP_NAME', '')
+    # 同步配置已移除
 
     # 文件前缀配置
     VALID_KEY_PREFIX = os.getenv("VALID_KEY_PREFIX", "keys/keys_valid_")
     RATE_LIMITED_KEY_PREFIX = os.getenv("RATE_LIMITED_KEY_PREFIX", "keys/key_429_")
-    KEYS_SEND_PREFIX = os.getenv("KEYS_SEND_PREFIX", "keys/keys_send_")
+    # KEYS_SEND_PREFIX 已移除，不再需要同步功能
 
     VALID_KEY_DETAIL_PREFIX = os.getenv("VALID_KEY_DETAIL_PREFIX", "logs/keys_valid_detail_")
     RATE_LIMITED_KEY_DETAIL_PREFIX = os.getenv("RATE_LIMITED_KEY_DETAIL_PREFIX", "logs/key_429_detail_")
-    KEYS_SEND_DETAIL_PREFIX = os.getenv("KEYS_SEND_DETAIL_PREFIX", "logs/keys_send_detail_")
+    # KEYS_SEND_DETAIL_PREFIX 已移除，不再需要同步功能
     
     # 日期范围过滤器配置 (单位：天)
     DATE_RANGE_DAYS = int(os.getenv("DATE_RANGE_DAYS", "730"))  # 默认730天 (约2年)
@@ -140,26 +131,8 @@ class Config:
         else:
             logger.info(f"✅ GitHub tokens: {len(cls.GITHUB_TOKENS)} configured")
         
-        # 检查Gemini Balancer配置
-        if cls.GEMINI_BALANCER_SYNC_ENABLED:
-            logger.info(f"✅ Gemini Balancer enabled, URL: {cls.GEMINI_BALANCER_URL}")
-            if not cls.GEMINI_BALANCER_AUTH or not cls.GEMINI_BALANCER_URL:
-                logger.warning("⚠️ Gemini Balancer Auth or URL Missing (Balancer功能将被禁用)")
-            else:
-                logger.info(f"✅ Gemini Balancer Auth: ****")
-        else:
-            logger.info("ℹ️ Gemini Balancer URL: Not configured (Balancer功能将被禁用)")
-
-        # 检查GPT Load Balancer配置
-        if cls.parse_bool(cls.GPT_LOAD_SYNC_ENABLED):
-            logger.info(f"✅ GPT Load Balancer enabled, URL: {cls.GPT_LOAD_URL}")
-            if not cls.GPT_LOAD_AUTH or not cls.GPT_LOAD_URL or not cls.GPT_LOAD_GROUP_NAME:
-                logger.warning("⚠️ GPT Load Balancer Auth, URL or Group Name Missing (Load Balancer功能将被禁用)")
-            else:
-                logger.info(f"✅ GPT Load Balancer Auth: ****")
-                logger.info(f"✅ GPT Load Balancer Group Name: {cls.GPT_LOAD_GROUP_NAME}")
-        else:
-            logger.info("ℹ️ GPT Load Balancer: Not configured (Load Balancer功能将被禁用)")
+        # 同步功能配置检查已移除
+        logger.info("ℹ️ 同步功能已被移除")
 
         if errors:
             logger.error("❌ Configuration check failed:")
@@ -174,19 +147,11 @@ logger.info(f"*" * 30 + " CONFIG START " + "*" * 30)
 logger.info(f"GITHUB_TOKENS: {len(Config.GITHUB_TOKENS)} tokens")
 logger.info(f"DATA_PATH: {Config.DATA_PATH}")
 logger.info(f"PROXY_LIST: {len(Config.PROXY_LIST)} proxies configured")
-logger.info(f"GEMINI_BALANCER_URL: {Config.GEMINI_BALANCER_URL or 'Not configured'}")
-logger.info(f"GEMINI_BALANCER_AUTH: {'Configured' if Config.GEMINI_BALANCER_AUTH else 'Not configured'}")
-logger.info(f"GEMINI_BALANCER_SYNC_ENABLED: {Config.parse_bool(Config.GEMINI_BALANCER_SYNC_ENABLED)}")
-logger.info(f"GPT_LOAD_SYNC_ENABLED: {Config.parse_bool(Config.GPT_LOAD_SYNC_ENABLED)}")
-logger.info(f"GPT_LOAD_URL: {Config.GPT_LOAD_URL or 'Not configured'}")
-logger.info(f"GPT_LOAD_AUTH: {'Configured' if Config.GPT_LOAD_AUTH else 'Not configured'}")
-logger.info(f"GPT_LOAD_GROUP_NAME: {Config.GPT_LOAD_GROUP_NAME or 'Not configured'}")
+# 同步相关配置日志已移除
 logger.info(f"VALID_KEY_PREFIX: {Config.VALID_KEY_PREFIX}")
 logger.info(f"RATE_LIMITED_KEY_PREFIX: {Config.RATE_LIMITED_KEY_PREFIX}")
-logger.info(f"KEYS_SEND_PREFIX: {Config.KEYS_SEND_PREFIX}")
 logger.info(f"VALID_KEY_DETAIL_PREFIX: {Config.VALID_KEY_DETAIL_PREFIX}")
 logger.info(f"RATE_LIMITED_KEY_DETAIL_PREFIX: {Config.RATE_LIMITED_KEY_DETAIL_PREFIX}")
-logger.info(f"KEYS_SEND_DETAIL_PREFIX: {Config.KEYS_SEND_DETAIL_PREFIX}")
 logger.info(f"DATE_RANGE_DAYS: {Config.DATE_RANGE_DAYS} days")
 logger.info(f"QUERIES_FILE: {Config.QUERIES_FILE}")
 logger.info(f"SCANNED_SHAS_FILE: {Config.SCANNED_SHAS_FILE}")

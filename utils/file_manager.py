@@ -14,16 +14,12 @@ class Checkpoint:
     last_scan_time: Optional[str] = None
     scanned_shas: Set[str] = field(default_factory=set)
     processed_queries: Set[str] = field(default_factory=set)
-    wait_send_balancer: Set[str] = field(default_factory=set)
-    wait_send_gpt_load: Set[str] = field(default_factory=set)
     
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式，但不包含scanned_shas（单独存储）"""
         return {
             "last_scan_time": self.last_scan_time,
-            "processed_queries": list(self.processed_queries),
-            "wait_send_balancer": list(self.wait_send_balancer),
-            "wait_send_gpt_load": list(self.wait_send_gpt_load)
+            "processed_queries": list(self.processed_queries)
         }
     
     @classmethod
@@ -32,9 +28,7 @@ class Checkpoint:
         return cls(
             last_scan_time=data.get("last_scan_time"),
             scanned_shas=set(),  # 将通过FileManager单独加载
-            processed_queries=set(data.get("processed_queries", [])),
-            wait_send_balancer=set(data.get("wait_send_balancer", [])),
-            wait_send_gpt_load=set(data.get("wait_send_gpt_load", []))
+            processed_queries=set(data.get("processed_queries", []))
         )
 
     def add_scanned_sha(self, sha: str) -> None:
@@ -71,8 +65,7 @@ class FileManager:
         self._keys_valid_filename: Optional[str] = None
         self._rate_limited_filename: Optional[str] = None
         self._rate_limited_detail_filename: Optional[str] = None
-        self._keys_send_filename: Optional[str] = None
-        self._keys_send_detail_filename: Optional[str] = None
+        # KEYS_SEND 相关文件名已移除
 
         # 3. 创建数据目录
         if not os.path.exists(self.data_dir):
@@ -102,10 +95,7 @@ class FileManager:
             f"{Config.RATE_LIMITED_KEY_PREFIX}{start_time.strftime('%Y%m%d')}.txt"
         )
 
-        self._keys_send_filename = os.path.join(
-            self.data_dir,
-            f"{Config.KEYS_SEND_PREFIX}{start_time.strftime('%Y%m%d')}.txt"
-        )
+        # KEYS_SEND 相关文件名初始化已移除
         self._detail_log_filename = os.path.join(
             self.data_dir,
             f"{ Config.VALID_KEY_DETAIL_PREFIX.rstrip('_')}{start_time.strftime('%Y%m%d')}.log"
@@ -114,14 +104,11 @@ class FileManager:
             self.data_dir,
             f"{Config.RATE_LIMITED_KEY_DETAIL_PREFIX}{start_time.strftime('%Y%m%d')}.log"
         )
-        self._keys_send_detail_filename = os.path.join(
-            self.data_dir,
-            f"{Config.KEYS_SEND_DETAIL_PREFIX}{start_time.strftime('%Y%m%d')}.log"
-        )
+        # KEYS_SEND 详细日志文件名初始化已移除
 
         # 创建文件（如果不存在），先确保父目录存在
-        for filename in [self._detail_log_filename, self._keys_valid_filename, self._rate_limited_filename, self._rate_limited_detail_filename, self._keys_send_filename,
-                         self._keys_send_detail_filename]:
+        for filename in [self._detail_log_filename, self._keys_valid_filename, self._rate_limited_filename, self._rate_limited_detail_filename]:
+            # KEYS_SEND 相关文件创建已移除
             if not os.path.exists(filename):
                 # 确保父目录存在（类似 mkdir -p）
                 parent_dir = os.path.dirname(filename)
@@ -133,10 +120,9 @@ class FileManager:
 
         logger.info(f"Initialized keys valid filename: {self._keys_valid_filename}")
         logger.info(f"Initialized rate limited filename: {self._rate_limited_filename}")
-        logger.info(f"Initialized keys send filename: {self._keys_send_filename}")
+        # KEYS_SEND 相关日志输出已移除
         logger.info(f"Initialized detail log filename: {self._detail_log_filename}")
         logger.info(f"Initialized rate limited detail filename: {self._rate_limited_detail_filename}")
-        logger.info(f"Initialized keys send detail filename: {self._keys_send_detail_filename}")
 
         logger.info("✅ FileManager initialization complete")
 
@@ -299,34 +285,7 @@ class FileManager:
                 for key in rate_limited_keys:
                     f.write(f"{key}\n")
 
-    def save_keys_send_result(self, keys: List[str], send_result: dict) -> None:
-        """
-        保存发送到外部应用的结果
-        
-        Args:
-            keys: API keys列表
-            send_result: 字典，key是密钥，value是发送结果状态
-        """
-        if not keys:
-            return
-
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # 保存详细信息到详细日志文件
-        if self._keys_send_detail_filename:
-            with open(self._keys_send_detail_filename, "a", encoding="utf-8") as f:
-                f.write(f"TIME: {timestamp}\n")
-                for key in keys:
-                    result = send_result.get(key, "unknown")
-                    f.write(f"KEY: {key} | RESULT: {result}\n")
-                f.write("-" * 80 + "\n")
-
-        # 保存简要信息到keys_send文件
-        if self._keys_send_filename:
-            with open(self._keys_send_filename, "a", encoding="utf-8") as f:
-                for key in keys:
-                    result = send_result.get(key, "unknown")
-                    f.write(f"{key} | {result}\n")
+    # save_keys_send_result 方法已移除，不再需要同步功能
 
     def append_scanned_sha(self, sha: str) -> None:
         """追加单个SHA到文件中"""
@@ -367,14 +326,7 @@ class FileManager:
                     f"{Config.RATE_LIMITED_KEY_PREFIX}{current_time.strftime('%Y%m%d')}.txt"
                 )
 
-        # 更新keys_send文件名
-        if self._keys_send_filename:
-            basename = os.path.basename(self._keys_send_filename)
-            if self._need_filename_update(basename, Config.KEYS_SEND_PREFIX, current_date_str, current_hour_str):
-                self._keys_send_filename = os.path.join(
-                    self.data_dir,
-                    f"{Config.KEYS_SEND_PREFIX}{current_time.strftime('%Y%m%d')}.txt"
-                )
+        # KEYS_SEND 相关文件名更新已移除
 
         # 更新detail_log文件名（按日期分割）
         if self._detail_log_filename:
@@ -395,14 +347,7 @@ class FileManager:
                     f"{Config.RATE_LIMITED_KEY_DETAIL_PREFIX}{current_date_str}.log"
                 )
 
-        # 更新keys_send_detail文件名（按日期分割）
-        if self._keys_send_detail_filename:
-            basename = os.path.basename(self._keys_send_detail_filename)
-            if self._need_daily_filename_update(basename, Config.KEYS_SEND_DETAIL_PREFIX, current_date_str):
-                self._keys_send_detail_filename = os.path.join(
-                    self.data_dir,
-                    f"{Config.KEYS_SEND_DETAIL_PREFIX}{current_date_str}.log"
-                )
+        # KEYS_SEND_DETAIL 相关文件名更新已移除
 
 
 
@@ -423,13 +368,7 @@ class FileManager:
     def rate_limited_detail_filename(self) -> Optional[str]:
         return self._rate_limited_detail_filename
 
-    @property
-    def keys_send_filename(self) -> Optional[str]:
-        return self._keys_send_filename
-
-    @property
-    def keys_send_detail_filename(self) -> Optional[str]:
-        return self._keys_send_detail_filename
+    # KEYS_SEND 相关属性方法已移除
 
     # 向后兼容的属性名
     @property
