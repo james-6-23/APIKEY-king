@@ -160,12 +160,71 @@ def extract_ms_keys_for_modelscope(content: str) -> List[str]:
     return deduped
 
 
+def extract_openrouter_keys(content: str) -> List[str]:
+    """
+    当同一文件中包含 Config.OPENROUTER_BASE_URLS 任一值时，提取 OpenRouter API keys。
+    OpenRouter key 格式: sk-or-v1-[64位十六进制字符串]
+    受控于以下配置：
+      - OPENROUTER_BASE_URLS
+      - OPENROUTER_USE_LOOSE_PATTERN (bool)
+      - OPENROUTER_PROXIMITY_CHARS (int, 当使用宽松模式时建议>0)
+      - OPENROUTER_REQUIRE_KEY_CONTEXT (bool)
+    """
+    base_urls = Config.OPENROUTER_BASE_URLS
+    has_base, base_positions = _contains_base_url(content, base_urls)
+    if not has_base:
+        return []
+
+    # OpenRouter key 正则模式
+    # 严格模式：sk-or-v1-[64位十六进制]
+    strict_pat = r'\bsk-or-v1-[0-9a-f]{64}\b'
+    # 宽松模式：sk-or-v1-[至少40位字符]
+    loose_pat = r'\bsk-or-v1-[0-9a-f]{40,}\b'
+    
+    use_loose = Config.parse_bool(Config.OPENROUTER_USE_LOOSE_PATTERN)
+    pattern = loose_pat if use_loose else strict_pat
+
+    proximity_chars = Config.OPENROUTER_PROXIMITY_CHARS if use_loose else 0
+    require_ctx = Config.parse_bool(Config.OPENROUTER_REQUIRE_KEY_CONTEXT)
+    ctx_re = re.compile(r"(key|token|secret|authorization|api[-_ ]?key|openrouter)", re.IGNORECASE)
+
+    results: List[str] = []
+    for m in re.finditer(pattern, content, re.IGNORECASE):
+        k = m.group(0)
+        
+        # 过滤明显的占位符
+        if "0000000000000000" in k.lower() or "your_key" in k.lower() or "example" in k.lower():
+            continue
+
+        # 邻近性检查（当使用宽松模式时）
+        if proximity_chars and base_positions:
+            pos = m.start()
+            near = any(abs(pos - bp) <= proximity_chars for bp in base_positions)
+            if not near:
+                continue
+
+        # 上下文检查（当启用时）
+        if require_ctx:
+            start = max(0, m.start() - 80)
+            end = min(len(content), m.end() + 80)
+            snippet = content[start:end]
+            if not ctx_re.search(snippet):
+                continue
+
+        results.append(k)
+
+    # 去重且保序
+    seen = set()
+    deduped = [x for x in results if not (x in seen or seen.add(x))]
+    return deduped
+
+
 def _parse_cli_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Hajimi King")
     parser.add_argument(
         "--mode",
-        choices=["modelscope-only", "compatible"],
-        help="modelscope-only: 仅提取 ms-key，不回退到 Gemini；compatible: 未命中 ms-key 时回退到原有逻辑",
+        choices=["modelscope-only", "openrouter-only", "compatible"],
+        help="modelscope-only: 仅提取 ms-key，不回退到 Gemini；openrouter-only: 仅提取 OpenRouter key；compatible: 未命中时回退到原有逻辑",
     )
     return parser.parse_args()
 
@@ -240,16 +299,31 @@ def process_item(item: Dict[str, Any]) -> tuple:
     except Exception as e:
         logger.error(f"ModelScope key extraction error: {e}")
 
+    # 尝试OpenRouter密钥提取（当配置了OpenRouter base_url时）
+    openrouter_keys: List[str] = []
+    try:
+        if Config.OPENROUTER_BASE_URLS:
+            openrouter_keys = extract_openrouter_keys(content)
+    except Exception as e:
+        logger.error(f"OpenRouter key extraction error: {e}")
+
+    # 如果找到了ModelScope或OpenRouter密钥，优先处理它们
     if ms_keys:
         logger.success(f"Found {len(ms_keys)} ModelScope key(s) (no validation)")
         file_manager.save_valid_keys(repo_name, file_path, file_url, ms_keys)
-        logger.file_op(f"Saved {len(ms_keys)} key(s)")
-        # ModelScope模式按需仅保存，不入外部同步队列
+        logger.file_op(f"Saved {len(ms_keys)} ModelScope key(s)")
         return len(ms_keys), 0
+    
+    if openrouter_keys:
+        logger.success(f"Found {len(openrouter_keys)} OpenRouter key(s) (no validation)")
+        file_manager.save_valid_keys(repo_name, file_path, file_url, openrouter_keys)
+        logger.file_op(f"Saved {len(openrouter_keys)} OpenRouter key(s)")
+        return len(openrouter_keys), 0
 
-    # 若启用仅ModelScope模式，则不回退到Gemini提取
-    if Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY):
-        logger.info("ℹ️ ModelScope-only mode enabled, no ms-key found, skipping Gemini extraction")
+    # 若启用仅提取模式（ModelScope 或 OpenRouter），则不回退到Gemini提取
+    extract_only_mode = Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY) or Config.parse_bool(Config.OPENROUTER_EXTRACT_ONLY)
+    if extract_only_mode:
+        logger.info("ℹ️ Extract-only mode enabled, no keys found, skipping Gemini extraction")
         return 0, 0
 
     # 默认回退到原有的Gemini密钥提取
@@ -353,17 +427,27 @@ def reset_skip_stats():
 def main():
     start_time = datetime.now()
 
-    # 解析命令行参数，优先覆盖仅 ModelScope 模式
+    # 解析命令行参数，配置提取模式
     try:
         args = _parse_cli_args()
         if getattr(args, "mode", None):
             # CLI 覆盖环境变量：仅本进程生效
-            Config.MODELSCOPE_EXTRACT_ONLY = (
-                "true" if args.mode == "modelscope-only" else "false"
-            )
-            logger.info(
-                f"🧭 CLI 模式: MODELSCOPE_EXTRACT_ONLY -> {Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY)} ({args.mode})"
-            )
+            if args.mode == "modelscope-only":
+                Config.MODELSCOPE_EXTRACT_ONLY = "true"
+                Config.OPENROUTER_EXTRACT_ONLY = "false"
+                # 可选：清空 OpenRouter URLs 以确保不提取
+                Config.OPENROUTER_BASE_URLS = []
+                logger.info(f"🧭 CLI 模式: ModelScope-only mode activated")
+            elif args.mode == "openrouter-only":
+                Config.OPENROUTER_EXTRACT_ONLY = "true"
+                Config.MODELSCOPE_EXTRACT_ONLY = "false"
+                # 可选：清空 ModelScope URLs 以确保不提取
+                Config.TARGET_BASE_URLS = []
+                logger.info(f"🧭 CLI 模式: OpenRouter-only mode activated")
+            elif args.mode == "compatible":
+                Config.MODELSCOPE_EXTRACT_ONLY = "false"
+                Config.OPENROUTER_EXTRACT_ONLY = "false"
+                logger.info(f"🧭 CLI 模式: Compatible mode activated (will fallback to Gemini)")
     except SystemExit:
         return
 

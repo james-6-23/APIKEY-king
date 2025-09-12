@@ -192,7 +192,7 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
-### Docker 场景下的 .env 示例（仅 ModelScope）
+### Docker 场景下的 .env 示例（支持 ModelScope 和 OpenRouter）
 
 ```bash
 # GitHub 访问令牌（必填）
@@ -205,10 +205,16 @@ DATA_PATH=/app/data
 TARGET_BASE_URLS=https://api-inference.modelscope.cn/v1/,api-inference.modelscope.cn
 MODELSCOPE_EXTRACT_ONLY=true
 
+# OpenRouter 提取配置
+OPENROUTER_BASE_URLS=https://openrouter.ai/api/v1,openrouter.ai
+OPENROUTER_EXTRACT_ONLY=true
+
 # 可选：宽松匹配与距离约束（召回不足时再开启）
 # MS_USE_LOOSE_PATTERN=true
 # MS_PROXIMITY_CHARS=800
 # MS_REQUIRE_KEY_CONTEXT=true
+# OPENROUTER_USE_LOOSE_PATTERN=true
+# OPENROUTER_PROXIMITY_CHARS=800
 ```
 
 ### 代理配置
@@ -264,6 +270,13 @@ PROXY=http://localhost:1080
 - `MS_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
 - `MS_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
 - `MODELSCOPE_EXTRACT_ONLY`: 仅提取并保存，不做验证（默认 true）。
+
+#### OpenRouter 提取配置（仅提取、不校验）
+- `OPENROUTER_BASE_URLS`: 逗号分隔的 OpenRouter API 地址，文件包含其一才会尝试提取（默认含 `https://openrouter.ai/api/v1`）。
+- `OPENROUTER_USE_LOOSE_PATTERN`: 是否使用宽松匹配模式（默认 false）。
+- `OPENROUTER_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
+- `OPENROUTER_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
+- `OPENROUTER_EXTRACT_ONLY`: 仅提取并保存，不做验证（默认 true）。
 
 ### 配置文件示例 💫
 

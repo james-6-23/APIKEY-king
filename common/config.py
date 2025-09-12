@@ -70,6 +70,19 @@ class Config:
     # If true, when extracting ModelScope keys, skip any validation and just save keys
     MODELSCOPE_EXTRACT_ONLY = os.getenv("MODELSCOPE_EXTRACT_ONLY", "true")
 
+    # OpenRouter key extraction configuration
+    OPENROUTER_BASE_URLS_STR = os.getenv(
+        "OPENROUTER_BASE_URLS",
+        "https://openrouter.ai/api/v1"
+    )
+    OPENROUTER_BASE_URLS = [u.strip() for u in OPENROUTER_BASE_URLS_STR.split(',') if u.strip()]
+    
+    # OpenRouter key extraction settings
+    OPENROUTER_USE_LOOSE_PATTERN = os.getenv("OPENROUTER_USE_LOOSE_PATTERN", "false")
+    OPENROUTER_PROXIMITY_CHARS = int(os.getenv("OPENROUTER_PROXIMITY_CHARS", "0"))
+    OPENROUTER_REQUIRE_KEY_CONTEXT = os.getenv("OPENROUTER_REQUIRE_KEY_CONTEXT", "false")
+    OPENROUTER_EXTRACT_ONLY = os.getenv("OPENROUTER_EXTRACT_ONLY", "true")
+
     @classmethod
     def parse_bool(cls, value: str) -> bool:
         """
@@ -163,6 +176,11 @@ logger.info(f"MS_USE_LOOSE_PATTERN: {Config.parse_bool(Config.MS_USE_LOOSE_PATTE
 logger.info(f"MS_PROXIMITY_CHARS: {Config.MS_PROXIMITY_CHARS}")
 logger.info(f"MS_REQUIRE_KEY_CONTEXT: {Config.parse_bool(Config.MS_REQUIRE_KEY_CONTEXT)}")
 logger.info(f"MODELSCOPE_EXTRACT_ONLY: {Config.parse_bool(Config.MODELSCOPE_EXTRACT_ONLY)}")
+logger.info(f"OPENROUTER_BASE_URLS: {len(Config.OPENROUTER_BASE_URLS)} configured")
+logger.info(f"OPENROUTER_USE_LOOSE_PATTERN: {Config.parse_bool(Config.OPENROUTER_USE_LOOSE_PATTERN)}")
+logger.info(f"OPENROUTER_PROXIMITY_CHARS: {Config.OPENROUTER_PROXIMITY_CHARS}")
+logger.info(f"OPENROUTER_REQUIRE_KEY_CONTEXT: {Config.parse_bool(Config.OPENROUTER_REQUIRE_KEY_CONTEXT)}")
+logger.info(f"OPENROUTER_EXTRACT_ONLY: {Config.parse_bool(Config.OPENROUTER_EXTRACT_ONLY)}")
 logger.info(f"*" * 30 + " CONFIG END " + "*" * 30)
 
 # 创建全局配置实例

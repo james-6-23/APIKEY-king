@@ -1,11 +1,6 @@
-# GitHub 搜索查询配置文件
+# GitHub 搜索查询配置文件 - OpenRouter支持版本
 # 每行一个查询语句，支持 GitHub 搜索语法
 # 以 # 开头的行为注释，空行会被忽略
-
-# ==== ModelScope API 密钥搜索 ====
-# 搜索包含 ModelScope API 地址的文件
-#"https://api-inference.modelscope.cn/v1/" in:file
-#api-inference.modelscope.cn in:file
 
 # ==== OpenRouter API 密钥搜索 ====
 # 搜索包含 OpenRouter API 地址的文件
@@ -13,10 +8,19 @@
 openrouter.ai in:file
 sk-or-v1- in:file
 
+# 特定文件类型中的 OpenRouter 配置
+"openrouter.ai" in:file filename:.env
+"sk-or-v1-" in:file filename:config
+
+# ==== ModelScope API 密钥搜索 ====
+# 搜索包含 ModelScope API 地址的文件
+"https://api-inference.modelscope.cn/v1/" in:file
+api-inference.modelscope.cn in:file
+
 # ==== Gemini API 密钥搜索 ====
 # 搜索 Gemini API 密钥（AIzaSy 开头）
-#AIzaSy in:file
-#AIzaSy in:file filename:.env
+AIzaSy in:file
+AIzaSy in:file filename:.env
 
 # ==== 更多搜索示例 ====
 # 你可以根据需要添加更多查询
