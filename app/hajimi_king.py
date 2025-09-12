@@ -11,9 +11,10 @@ from typing import Dict, List, Union, Any, Tuple
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
 
-from common.Logger import logger
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-sys.path.append('../')
+from common.Logger import logger
 from common.config import Config
 from utils.github_client import GitHubClient
 from utils.file_manager import file_manager, Checkpoint, checkpoint
@@ -240,9 +241,9 @@ def process_item(item: Dict[str, Any]) -> tuple:
         logger.error(f"ModelScope key extraction error: {e}")
 
     if ms_keys:
-        logger.info(f"🔑 Found {len(ms_keys)} ModelScope key(s) (no validation)")
+        logger.success(f"Found {len(ms_keys)} ModelScope key(s) (no validation)")
         file_manager.save_valid_keys(repo_name, file_path, file_url, ms_keys)
-        logger.info(f"💾 Saved {len(ms_keys)} key(s)")
+        logger.file_op(f"Saved {len(ms_keys)} key(s)")
         # ModelScope模式按需仅保存，不入外部同步队列
         return len(ms_keys), 0
 
@@ -270,7 +271,7 @@ def process_item(item: Dict[str, Any]) -> tuple:
     if not keys:
         return 0, 0
 
-    logger.info(f"🔑 Found {len(keys)} suspected key(s), validating...")
+    logger.info(f"🔍 Found {len(keys)} suspected key(s), validating...")
 
     valid_keys = []
     rate_limited_keys = []
@@ -280,22 +281,22 @@ def process_item(item: Dict[str, Any]) -> tuple:
         validation_result = validate_gemini_key(key)
         if validation_result and "ok" in validation_result:
             valid_keys.append(key)
-            logger.info(f"✅ VALID: {key}")
+            logger.success(f"VALID: {key}")
         elif validation_result == "rate_limited":
             rate_limited_keys.append(key)
-            logger.warning(f"⚠️ RATE LIMITED: {key}, check result: {validation_result}")
+            logger.rate_limit(f"RATE LIMITED: {key}, check result: {validation_result}")
         else:
             logger.info(f"❌ INVALID: {key}, check result: {validation_result}")
 
     # 保存结果
     if valid_keys:
         file_manager.save_valid_keys(repo_name, file_path, file_url, valid_keys)
-        logger.info(f"💾 Saved {len(valid_keys)} valid key(s)")
+        logger.file_op(f"Saved {len(valid_keys)} valid key(s)")
         # 同步功能已移除
 
     if rate_limited_keys:
         file_manager.save_rate_limited_keys(repo_name, file_path, file_url, rate_limited_keys)
-        logger.info(f"💾 Saved {len(rate_limited_keys)} rate limited key(s)")
+        logger.file_op(f"Saved {len(rate_limited_keys)} rate limited key(s)")
 
     return len(valid_keys), len(rate_limited_keys)
 
@@ -312,7 +313,7 @@ def validate_gemini_key(api_key: str) -> Union[bool, str]:
         }
         
         # 如果有代理配置，添加到client_options中
-        if proxy_config:
+        if proxy_config and proxy_config.get('http'):
             os.environ['grpc_proxy'] = proxy_config.get('http')
 
         genai.configure(
@@ -367,30 +368,28 @@ def main():
         return
 
     # 打印系统启动信息
-    logger.info("=" * 60)
-    logger.info("🚀 HAJIMI KING STARTING")
-    logger.info("=" * 60)
+    logger.separator("🚀 HAJIMI KING STARTING 🚀")
     logger.info(f"⏰ Started at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # 1. 检查配置
     if not Config.check():
-        logger.info("❌ Config check failed. Exiting...")
+        logger.error("Config check failed. Exiting...")
         sys.exit(1)
     # 2. 检查文件管理器
     if not file_manager.check():
-        logger.error("❌ FileManager check failed. Exiting...")
+        logger.error("FileManager check failed. Exiting...")
         sys.exit(1)
 
     # 同步功能相关代码已移除
 
     # 3. 显示系统信息
     search_queries = file_manager.get_search_queries()
-    logger.info("📋 SYSTEM INFORMATION:")
+    logger.separator("📋 SYSTEM INFORMATION")
     logger.info(f"🔑 GitHub tokens: {len(Config.GITHUB_TOKENS)} configured")
     logger.info(f"🔍 Search queries: {len(search_queries)} loaded")
     logger.info(f"📅 Date filter: {Config.DATE_RANGE_DAYS} days")
     if Config.PROXY_LIST:
-        logger.info(f"🌐 Proxy: {len(Config.PROXY_LIST)} proxies configured")
+        logger.network(f"Proxy: {len(Config.PROXY_LIST)} proxies configured")
 
     if checkpoint.last_scan_time:
         logger.info(f"💾 Checkpoint found - Incremental scan mode")
@@ -401,8 +400,8 @@ def main():
         logger.info(f"💾 No checkpoint - Full scan mode")
 
 
-    logger.info("✅ System ready - Starting king")
-    logger.info("=" * 60)
+    logger.success("System ready - Starting scan")
+    logger.separator()
 
     total_keys_found = 0
     total_rate_limited_keys = 0
@@ -436,8 +435,11 @@ def main():
 
                             # 每20个item保存checkpoint并显示进度
                             if item_index % 20 == 0:
-                                logger.info(
-                                    f"📈 Progress: {item_index}/{len(items)} | query: {q} | current valid: {query_valid_keys} | current rate limited: {query_rate_limited_keys} | total valid: {total_keys_found} | total rate limited: {total_rate_limited_keys}")
+                                logger.progress(
+                                    f"Processing query: {q[:30]}...", 
+                                    item_index, len(items)
+                                )
+                                logger.info(f"Current valid: {query_valid_keys} | Rate limited: {query_rate_limited_keys} | Total valid: {total_keys_found}")
                                 file_manager.save_checkpoint(checkpoint)
                                 file_manager.update_dynamic_filenames()
 

@@ -69,7 +69,7 @@ class GitHubClient:
                     rate_limit_remaining = response.headers.get('X-RateLimit-Remaining')
                     # 只在剩余次数很少时警告
                     if rate_limit_remaining and int(rate_limit_remaining) < 3:
-                        logger.warning(f"⚠️ Rate limit low: {rate_limit_remaining} remaining, token: {current_token}")
+                        logger.rate_limit(f"Rate limit low: {rate_limit_remaining} remaining, token: {current_token}")
                     response.raise_for_status()
                     page_result = response.json()
                     page_success = True
@@ -83,7 +83,7 @@ class GitHubClient:
                         wait = min(2 ** attempt + random.uniform(0, 1), 60)
                         # 只在严重情况下记录详细日志
                         if attempt >= 3:
-                            logger.warning(f"❌ Rate limit hit, status:{status} (attempt {attempt}/{max_retries}) - waiting {wait:.1f}s")
+                            logger.rate_limit(f"Rate limit hit, status:{status} (attempt {attempt}/{max_retries}) - waiting {wait:.1f}s")
                         time.sleep(wait)
                         continue
                     else:
@@ -173,7 +173,7 @@ class GitHubClient:
             # 获取proxy配置
             proxies = Config.get_random_proxy()
 
-            logger.info(f"🔍 Processing file: {metadata_url}")
+            logger.network(f"Processing file: {metadata_url}")
             if proxies:
                 metadata_response = requests.get(metadata_url, headers=headers, proxies=proxies)
             else:
@@ -204,7 +204,7 @@ class GitHubClient:
                 content_response = requests.get(download_url, headers=headers, proxies=proxies)
             else:
                 content_response = requests.get(download_url, headers=headers)
-            logger.info(f"⏳ checking for keys from:  {download_url},status: {content_response.status_code}")
+            logger.network(f"Checking for keys from: {download_url}, status: {content_response.status_code}")
             content_response.raise_for_status()
             return content_response.text
 

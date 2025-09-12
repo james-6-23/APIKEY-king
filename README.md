@@ -11,23 +11,23 @@
 1) 配置 `.env`（不要提交到仓库）
 
 ```bash
-GITHUB_TOKENS=ghp_xxx1,ghp_xxx2
-DATA_PATH=./data
+# 复制配置模板
+cp .env.template .env
 
-# 仅提取 ModelScope ms-key（默认已开启），命令行可覆盖
-MODELSCOPE_EXTRACT_ONLY=true
-TARGET_BASE_URLS=https://api-inference.modelscope.cn/v1/,api-inference.modelscope.cn
-# 如需放宽匹配：
-# MS_USE_LOOSE_PATTERN=true
-# MS_PROXIMITY_CHARS=800
-# MS_REQUIRE_KEY_CONTEXT=true
+# 编辑配置文件，填入你的 GitHub Token
+# GITHUB_TOKENS=ghp_xxx1,ghp_xxx2
 ```
 
 2) 准备查询 `data/queries.txt`
 
 ```bash
-"https://api-inference.modelscope.cn/v1/" in:file
-api-inference.modelscope.cn in:file
+# 创建查询文件
+cp queries.template data/queries.txt
+
+# 或手动创建
+mkdir -p data
+echo '"https://api-inference.modelscope.cn/v1/" in:file' > data/queries.txt
+echo 'api-inference.modelscope.cn in:file' >> data/queries.txt
 ```
 
 3) 运行（仅 ModelScope 模式）
@@ -47,7 +47,7 @@ python app/hajimi_king.py --mode modelscope-only
 2. **代理支持** 🌐 - 支持多代理轮换，提高访问稳定性和成功率
 3. **增量扫描** 📊 - 支持断点续传，避免重复扫描已处理的文件
 4. **智能过滤** 🚫 - 自动过滤文档、示例、测试文件，专注有效代码
-5. **外部同步** 🔄 - 支持向[Gemini-Balancer](https://github.com/snailyp/gemini-balance)和[GPT-Load](https://github.com/tbphp/gpt-load)同步发现的密钥
+5. **ModelScope 密钥提取** 🔑 - 支持提取 ModelScope API 密钥（ms-uuid 格式）
 
 ### 🔮 待开发功能 (TODO)
 
@@ -80,13 +80,13 @@ pip install uv
 ```bash
 # 克隆项目
 git clone <repository-url>
-cd hajimi-king
+cd APIKEY-king
 
 # 复制配置文件
-cp env.example .env
+cp .env.template .env
 
 # 复制查询文件
-cp queries.example queries.txt
+cp queries.template data/queries.txt
 ```
 
 ### 3. 配置环境变量 🔑
@@ -171,10 +171,10 @@ services:
     working_dir: /app
 ```
 
-创建 `.env` 文件（参考 `env.example`）：
+创建 `.env` 文件（参考 `.env.template`）：
 ```bash
-# 复制示例配置文件
-cp env.example .env
+# 复制配置模板
+cp .env.template .env
 # 编辑配置文件，填入你的GitHub Token
 ```
 
@@ -246,13 +246,6 @@ PROXY=http://localhost:1080
 | `DATE_RANGE_DAYS` | `730`              | 仓库年龄过滤（天数），只扫描指定天数内的仓库 📅                       |
 | `QUERIES_FILE` | `queries.txt`      | 搜索查询配置文件路径（表达式严重影响搜索的高效性) 🎯                    |
 | `HAJIMI_CHECK_MODEL` | `gemini-2.5-flash` | 用于验证key有效的模型 🤖                                 |
-| `GEMINI_BALANCER_SYNC_ENABLED` | `false` | 是否启用Gemini Balancer同步 🔗                        |
-| `GEMINI_BALANCER_URL` | 空 | Gemini Balancer服务地址（http://your-gemini-balancer.com） 🌐 |
-| `GEMINI_BALANCER_AUTH` | 空 | Gemini Balancer认证信息(密码） 🔐                      |
-| `GPT_LOAD_SYNC_ENABLED` | `false` | 是否启用GPT Load Balancer同步 🔗                      |
-| `GPT_LOAD_URL` | 空 | GPT Load 服务地址（http://your-gpt-load.com） 🌐      |
-| `GPT_LOAD_AUTH` | 空 | GPT Load 认证Token（页面密码） 🔐                       |
-| `GPT_LOAD_GROUP_NAME` | 空 | GPT Load 组名，多个用逗号分隔（group1,group2） 👥           |
 
 ### 🟢 可选配置（不懂就别动）😅
 
@@ -260,10 +253,8 @@ PROXY=http://localhost:1080
 |----------------------------------|------------------------------------|------|
 | `VALID_KEY_PREFIX`               | `keys/keys_valid_`                 | 有效密钥文件名前缀 🗝️ |
 | `RATE_LIMITED_KEY_PREFIX`        | `keys/key_429_`                    | 频率限制密钥文件名前缀 ⏰ |
-| `KEYS_SEND_PREFIX`               | `keys/keys_send_`                  | 发送到外部应用的密钥文件名前缀 🚀 |
 | `VALID_KEY_DETAIL_PREFIX`        | `logs/keys_valid_detail_`          | 详细日志文件名前缀 📝 |
 | `RATE_LIMITED_KEY_DETAIL_PREFIX` | `logs/key_429_detail_`             | 频率限制详细日志文件名前缀 📊 |
-| `VALID_KEY_DETAIL_PREFIX`        | `logs/keys_valid_detail_`          | 有效密钥文件名前缀 🗝️ |
 | `SCANNED_SHAS_FILE`              | `scanned_shas.txt`                 | 已扫描文件SHA记录文件名 📋 |
 | `FILE_PATH_BLACKLIST`            | `readme,docs,doc/,.md,example,...` | 文件路径黑名单，逗号分隔 🚫 |
 
@@ -289,24 +280,11 @@ QUERIES_FILE=queries.txt
 HAJIMI_CHECK_MODEL=gemini-2.5-flash
 PROXY=
 
-# Gemini Balancer同步配置
-GEMINI_BALANCER_SYNC_ENABLED=false
-GEMINI_BALANCER_URL=
-GEMINI_BALANCER_AUTH=
-
-# GPT Load Balancer同步配置
-GPT_LOAD_SYNC_ENABLED=false
-GPT_LOAD_URL=
-GPT_LOAD_AUTH=
-GPT_LOAD_GROUP_NAME=group1,group2,group3
-
 # 高级配置（建议保持默认）
 VALID_KEY_PREFIX=keys/keys_valid_
 RATE_LIMITED_KEY_PREFIX=keys/key_429_
-KEYS_SEND_PREFIX=keys/keys_send_
 VALID_KEY_DETAIL_PREFIX=logs/keys_valid_detail_
 RATE_LIMITED_KEY_DETAIL_PREFIX=logs/key_429_detail_
-KEYS_SEND_DETAIL_PREFIX=logs/keys_send_detail_
 SCANNED_SHAS_FILE=scanned_shas.txt
 FILE_PATH_BLACKLIST=readme,docs,doc/,.md,example,sample,tutorial,test,spec,demo,mock
 ```
