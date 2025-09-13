@@ -1,0 +1,18 @@
+# Gemini API key extractor configuration (with validation support)
+name: "gemini"
+enabled: true
+
+# Regular expression patterns for key detection
+patterns:
+  strict: "AIzaSy[A-Za-z0-9\\-_]{33}"
+  
+# Base URLs that indicate Gemini usage (not used for Gemini extractor)
+base_urls: []
+
+# Pattern matching settings
+use_loose_pattern: false
+proximity_chars: 0
+require_key_context: false
+
+# Validation settings
+extract_only: false  # Enable validation for Gemini keys

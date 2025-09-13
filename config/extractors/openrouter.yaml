@@ -1,0 +1,21 @@
+# OpenRouter API key extractor configuration (with validation support)
+name: "openrouter"
+enabled: true
+
+# Regular expression patterns for key detection
+patterns:
+  strict: "sk-or-v1-[0-9a-f]{64}"
+  loose: "sk-or-v1-[0-9a-f]{40,}"
+
+# Base URLs that must be present in the file for extraction to occur
+base_urls:
+  - "https://openrouter.ai/api/v1"
+  - "openrouter.ai"
+
+# Pattern matching settings
+use_loose_pattern: false
+proximity_chars: 0  # Only used when use_loose_pattern is true
+require_key_context: false
+
+# Validation settings
+extract_only: false  # Enable validation for OpenRouter keys

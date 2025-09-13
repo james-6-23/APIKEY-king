@@ -1,0 +1,9 @@
+# GitHub search queries for OpenRouter API keys
+# One query per line, lines starting with # are comments
+
+# OpenRouter API URL-based searches
+"https://openrouter.ai/api/v1" in:file
+"openrouter.ai/api/v1" in:file
+"openrouter.ai" in:file filename:.env
+sk-or-v1- in:file "openrouter"
+"sk-or-v1-" in:file

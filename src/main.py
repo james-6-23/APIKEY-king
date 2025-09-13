@@ -1,0 +1,452 @@
+"""
+Main application entry point for APIKEY-king.
+"""
+
+import argparse
+import sys
+import time
+from datetime import datetime
+from typing import Dict, Any, List
+
+from .core import ScanMode, APIKeyScanner
+from .services import ConfigService, GitHubService, FileService
+from .extractors import GeminiExtractor, ModelScopeExtractor, OpenRouterExtractor
+from .validators import GeminiValidator, OpenRouterValidator, ModelScopeValidator
+from .models import Checkpoint, ScanResult, BatchScanResult
+from .utils import logger
+
+
+class Application:
+    """Main application class."""
+    
+    def __init__(self, scan_mode: ScanMode = ScanMode.COMPATIBLE):
+        self.config_service = ConfigService()
+        self.config = None
+        self.github_service = None
+        self.file_service = None
+        self.scanner = None
+        self.checkpoint = None
+        self.scan_mode = scan_mode
+        
+        # Statistics
+        self.skip_stats = {
+            "time_filter": 0,
+            "sha_duplicate": 0, 
+            "age_filter": 0,
+            "doc_filter": 0
+        }
+    
+    def initialize(self) -> bool:
+        """Initialize application components."""
+        try:
+            # Load configuration
+            self.config = self.config_service.load_config()
+            
+            # Apply scan mode overrides
+            self._apply_scan_mode_config()
+            
+            logger.init_success("配置 Configuration")
+            
+            # Initialize services
+            self.github_service = GitHubService(self.config)
+            self.file_service = FileService(self.config.data_path)
+            logger.init_success("服务 Services")
+            
+            # Create extractors based on configuration
+            extractors = self._create_extractors()
+            validators = self._create_validators()
+            
+            # Create scanner
+            self.scanner = APIKeyScanner(extractors, validators)
+            logger.scan_mode_summary(extractors, validators)
+            
+            # Load checkpoint
+            self.checkpoint = self.file_service.load_checkpoint()
+            logger.init_success("检查点 Checkpoint")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"初始化失败 Failed to initialize application: {e}")
+            return False
+    
+    def _apply_scan_mode_config(self) -> None:
+        """Apply scan mode specific configuration overrides."""
+        if self.scan_mode == ScanMode.OPENROUTER_ONLY:
+            # Enable only OpenRouter extractor
+            for name, extractor_config in self.config.extractors.items():
+                if name == 'openrouter':
+                    extractor_config.enabled = True
+                    extractor_config.extract_only = False  # Enable validation for OpenRouter
+                else:
+                    extractor_config.enabled = False
+            
+            # Enable only OpenRouter validator
+            for name, validator_config in self.config.validators.items():
+                if name == 'openrouter':
+                    validator_config.enabled = True
+                else:
+                    validator_config.enabled = False
+            
+            # Use OpenRouter queries
+            self.config.scan.queries_file = "config/queries/openrouter.txt"
+            logger.mode_activated("OpenRouter", True)
+            
+        elif self.scan_mode == ScanMode.MODELSCOPE_ONLY:
+            # Enable only ModelScope extractor
+            for name, extractor_config in self.config.extractors.items():
+                if name == 'modelscope':
+                    extractor_config.enabled = True
+                    extractor_config.extract_only = False  # Enable validation for ModelScope
+                else:
+                    extractor_config.enabled = False
+            
+            # Enable only ModelScope validator
+            for name, validator_config in self.config.validators.items():
+                if name == 'modelscope':
+                    validator_config.enabled = True
+                else:
+                    validator_config.enabled = False
+            
+            # Use ModelScope queries
+            self.config.scan.queries_file = "config/queries/modelscope.txt"
+            logger.mode_activated("ModelScope", True)
+            
+        elif self.scan_mode == ScanMode.GEMINI_ONLY:
+            # Enable only Gemini extractor
+            for name, extractor_config in self.config.extractors.items():
+                if name == 'gemini':
+                    extractor_config.enabled = True
+                    extractor_config.extract_only = False  # Enable validation
+                else:
+                    extractor_config.enabled = False
+            
+            # Enable only Gemini validator
+            for name, validator_config in self.config.validators.items():
+                if name == 'gemini':
+                    validator_config.enabled = True
+                else:
+                    validator_config.enabled = False
+            
+            # Use Gemini queries
+            self.config.scan.queries_file = "config/queries/gemini.txt"
+            logger.mode_activated("Gemini", True)
+            
+        elif self.scan_mode == ScanMode.COMPATIBLE:
+            # Enable all extractors with validation where supported
+            for name, extractor_config in self.config.extractors.items():
+                if name in ['gemini', 'openrouter', 'modelscope']:
+                    extractor_config.extract_only = False  # Enable validation for all
+            
+            # Enable all validators
+            for name, validator_config in self.config.validators.items():
+                validator_config.enabled = True
+                
+            logger.mode_activated("兼容 Compatible", True)
+    
+    def _create_extractors(self) -> List:
+        """Create extractor instances based on configuration."""
+        extractors = []
+        
+        enabled_extractors = self.config.get_enabled_extractors()
+        
+        for name, config in enabled_extractors.items():
+            try:
+                if name == 'gemini':
+                    extractor = GeminiExtractor(config)
+                elif name == 'modelscope':
+                    extractor = ModelScopeExtractor(config)
+                elif name == 'openrouter':
+                    extractor = OpenRouterExtractor(config)
+                else:
+                    logger.warning(f"Unknown extractor type: {name}")
+                    continue
+                
+                extractors.append(extractor)
+                logger.init_success(f"{name} 提取器 extractor")
+                
+            except Exception as e:
+                logger.error(f"Failed to create {name} extractor: {e}")
+        
+        return extractors
+    
+    def _create_validators(self) -> List:
+        """Create validator instances based on configuration."""
+        validators = []
+        
+        enabled_validators = self.config.get_enabled_validators()
+        
+        for name, config in enabled_validators.items():
+            try:
+                if name == 'gemini':
+                    validator = GeminiValidator(config)
+                    validators.append(validator)
+                    logger.init_success(f"{name} 验证器 validator")
+                elif name == 'openrouter':
+                    validator = OpenRouterValidator(config)
+                    validators.append(validator)
+                    logger.init_success(f"{name} 验证器 validator")
+                elif name == 'modelscope':
+                    validator = ModelScopeValidator(config)
+                    validators.append(validator)
+                    logger.init_success(f"{name} 验证器 validator")
+                else:
+                    logger.warning(f"Unknown validator type: {name}")
+            
+            except Exception as e:
+                logger.error(f"Failed to create {name} validator: {e}")
+        
+        return validators
+    
+    def run(self) -> None:
+        """Run the main scanning loop."""
+        if not self.initialize():
+            logger.error("初始化失败 Failed to initialize application")
+            sys.exit(1)
+        
+        # Print startup information
+        self._print_startup_info()
+        
+        # Load queries
+        queries = self.file_service.load_queries(self.config.scan.queries_file)
+        if not queries:
+            logger.error("未加载查询 No queries loaded - check queries file")
+            sys.exit(1)
+        
+        logger.info(f"🔍 已加载 Loaded {len(queries)} 个查询 queries")
+        
+        # Main scanning loop
+        total_valid_keys = 0
+        loop_count = 0
+        
+        try:
+            while True:
+                loop_count += 1
+                logger.separator(f"🔄 第 #{loop_count} 轮 LOOP - {datetime.now().strftime('%H:%M:%S')}")
+                
+                batch_result = BatchScanResult()
+                self._reset_skip_stats()
+                
+                for i, query in enumerate(queries, 1):
+                    normalized_query = self._normalize_query(query)
+                    
+                    # Skip if already processed
+                    if normalized_query in self.checkpoint.processed_queries:
+                        logger.info(f"⏭️ 跳过已处理查询 Skipping processed query #{i}: {query[:50]}...")
+                        continue
+                    
+                    logger.info(f"🔍 处理查询 Processing query #{i}/{len(queries)}: {query}")
+                    
+                    # Search GitHub
+                    search_results = self.github_service.search_code(query)
+                    items = search_results.get('items', [])
+                    
+                    if not items:
+                        logger.info(f"📭 未找到条目 No items found for query #{i}")
+                        self.checkpoint.add_processed_query(normalized_query)
+                        continue
+                    
+                    # Process items
+                    for item_idx, item in enumerate(items, 1):
+                        try:
+                            if self._should_skip_item(item):
+                                continue
+                            
+                            # Get file content
+                            content = self.github_service.get_file_content(item)
+                            if not content:
+                                continue
+                            
+                            # Scan content
+                            scan_results = self._scan_item(item, content)
+                            if scan_results:
+                                batch_result.add_result(scan_results)
+                                total_valid_keys += len(scan_results.get_valid_keys())
+                            
+                            # Update checkpoint
+                            self.checkpoint.add_scanned_sha(item.get("sha"))
+                            
+                            # Progress update every 20 items
+                            if item_idx % 20 == 0:
+                                logger.progress(f"Query {i} progress", item_idx, len(items))
+                                self._save_checkpoint()
+                        
+                        except Exception as e:
+                            logger.error(f"处理条目错误 Error processing item {item_idx}: {e}")
+                            batch_result.add_error({
+                                'item_index': item_idx,
+                                'error': str(e),
+                                'item_url': item.get('html_url', 'unknown')
+                            })
+                    
+                    # Mark query as processed
+                    self.checkpoint.add_processed_query(normalized_query)
+                    self._save_checkpoint()
+                    
+                    logger.info(f"✅ 查询 #{i} 完成 Query complete - 发现 Found {len([r for r in batch_result.results if r.get_all_keys()])} 个文件包含密钥 files with keys")
+                    self._print_skip_stats()
+                
+                # Save batch results
+                batch_result.finalize()
+                self.file_service.save_batch_result(batch_result)
+                
+                logger.separator(f"🏁 第 #{loop_count} 轮完成 LOOP COMPLETE")
+                logger.success(f"已处理 Processed {batch_result.total_files_processed} 个文件 files")
+                logger.success(f"发现 Found {batch_result.total_keys_found} 个密钥 total keys")  
+                logger.success(f"验证 Validated {batch_result.total_valid_keys} 个有效密钥 valid keys")
+                logger.info(f"累计有效密钥 Total valid keys so far: {total_valid_keys}")
+                
+                # Sleep between loops
+                logger.info("💤 休眠 10 秒等待下一轮 Sleeping 10 seconds before next loop...")
+                time.sleep(10)
+        
+        except KeyboardInterrupt:
+            logger.info("⛔ 用户中断 Interrupted by user")
+            self._save_checkpoint()
+            logger.info(f"📊 最终统计 Final stats - 总共发现有效密钥 Total valid keys found: {total_valid_keys}")
+    
+    def _scan_item(self, item: Dict[str, Any], content: str) -> ScanResult:
+        """Scan a single item for API keys."""
+        context = {
+            'file_path': item.get('path', ''),
+            'repository': item.get('repository', {}),
+            'proxy_config': None  # Could add proxy config here
+        }
+        
+        # Use scanner to process content
+        scan_results = self.scanner.scan_content(content, context)
+        
+        if not scan_results['summary']['total_keys_found']:
+            return None
+        
+        # Create ScanResult object
+        result = ScanResult(
+            file_url=item.get('html_url', ''),
+            repository_name=item.get('repository', {}).get('full_name', ''),
+            file_path=item.get('path', ''),
+            extracted_keys={},
+            validation_results={},
+            scan_metadata=scan_results['summary']
+        )
+        
+        # Process extraction results
+        for extractor_name, extraction_result in scan_results['extracted_keys'].items():
+            result.extracted_keys[extractor_name] = extraction_result.keys
+        
+        # Process validation results  
+        for key, validation_result in scan_results['validation_results'].items():
+            result.validation_results[key] = {
+                'is_valid': validation_result.is_valid,
+                'status': validation_result.status,
+                'error_message': validation_result.error_message,
+                'metadata': validation_result.metadata
+            }
+        
+        return result
+    
+    def _should_skip_item(self, item: Dict[str, Any]) -> bool:
+        """Check if item should be skipped."""
+        # Check if SHA already processed
+        if item.get("sha") in self.checkpoint.scanned_shas:
+            self.skip_stats["sha_duplicate"] += 1
+            return True
+        
+        # Check file path blacklist
+        file_path = item.get("path", "").lower()
+        if any(blocked in file_path for blocked in self.config.scan.file_path_blacklist):
+            self.skip_stats["doc_filter"] += 1
+            return True
+        
+        return False
+    
+    def _normalize_query(self, query: str) -> str:
+        """Normalize query string for consistency."""
+        return " ".join(query.split())
+    
+    def _save_checkpoint(self) -> None:
+        """Save current checkpoint."""
+        self.checkpoint.update_scan_time()
+        self.file_service.save_checkpoint(self.checkpoint)
+    
+    def _reset_skip_stats(self) -> None:
+        """Reset skip statistics."""
+        self.skip_stats = {"time_filter": 0, "sha_duplicate": 0, "age_filter": 0, "doc_filter": 0}
+    
+    def _print_skip_stats(self) -> None:
+        """Print skip statistics."""
+        total_skipped = sum(self.skip_stats.values())
+        if total_skipped > 0:
+            logger.info(f"📊 已跳过 Skipped {total_skipped} 个条目 items - " + 
+                       f"重复 Duplicate: {self.skip_stats['sha_duplicate']}, " +
+                       f"文档 Docs: {self.skip_stats['doc_filter']}")
+    
+    def _print_startup_info(self) -> None:
+        """Print startup information."""
+        logger.startup_banner()
+        logger.github_tokens(len(self.config.github.tokens))
+        logger.info(f"📅 日期过滤 Date filter: {self.config.scan.date_range_days} 天 days")
+        
+        if self.config.get_proxy_configs():
+            logger.info(f"🌐 代理配置 Proxies: {len(self.config.get_proxy_configs())} 个已配置 configured")
+        
+        if self.checkpoint.last_scan_time:
+            logger.info(f"💾 增量扫描模式 Incremental scan mode - 上次扫描 Last scan: {self.checkpoint.last_scan_time}")
+            logger.info(f"📁 已扫描文件 Already scanned: {len(self.checkpoint.scanned_shas)} 个文件 files")
+        else:
+            logger.info("💾 完整扫描模式 Full scan mode")
+        
+        logger.success("系统就绪 System ready - 开始扫描 Starting scan")
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="APIKEY-king - API Key Discovery Tool")
+    parser.add_argument(
+        "--mode",
+        choices=["modelscope-only", "openrouter-only", "gemini-only", "compatible"],
+        default="compatible",
+        help="Scanning mode: modelscope-only, openrouter-only, gemini-only, or compatible (all types)"
+    )
+    parser.add_argument(
+        "--config-preset",
+        help="Load configuration preset from config/presets/ directory"
+    )
+    parser.add_argument(
+        "--queries",
+        help="Override queries file path"
+    )
+    return parser.parse_args()
+
+
+def main():
+    """Main entry point."""
+    args = parse_args()
+    
+    # Determine scan mode
+    scan_mode = ScanMode.COMPATIBLE
+    if args.mode:
+        scan_mode = ScanMode(args.mode)
+    
+    app = Application(scan_mode)
+    
+    # Apply CLI overrides
+    if args.mode:
+        logger.info(f"🧭 CLI Mode: {args.mode}")
+    
+    if args.config_preset:
+        # Load preset configuration
+        import os
+        preset_file = f"config/presets/{args.config_preset}.env"
+        if os.path.exists(preset_file):
+            from dotenv import load_dotenv
+            load_dotenv(preset_file, override=True)
+            logger.info(f"📋 Loaded preset: {args.config_preset}")
+        else:
+            logger.error(f"❌ Preset not found: {preset_file}")
+            sys.exit(1)
+    
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

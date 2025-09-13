@@ -1,15 +1,98 @@
 version: '3.8'
 
 services:
-  hajimi-king:
-    image: hajimi-king:0.0.1
-    container_name: hajimi-king
+  # 🚀 全面验证模式（推荐）
+  apikey-king-full:
+    image: apikey-king:latest
+    container_name: apikey-king-full
     restart: unless-stopped
-    network_mode: host
-    # 环境变量
-    env_file:
-      - .env
-    
-    # 数据卷挂载
+    environment:
+      - GITHUB_TOKENS=${GITHUB_TOKENS}
+      - GEMINI_VALIDATION_ENABLED=true
+      - OPENROUTER_VALIDATION_ENABLED=true
+      - MODELSCOPE_VALIDATION_ENABLED=true
+      - HAJIMI_CHECK_MODEL=gemini-2.5-flash
+      - OPENROUTER_TEST_MODEL=deepseek/deepseek-chat-v3.1:free
+      - MODELSCOPE_TEST_MODEL=Qwen/Qwen2-1.5B-Instruct
+      - PROXY=${PROXY:-}
     volumes:
-      - ./data:/app/data
+      - ./data/full:/app/data
+      - ./config/queries:/app/config/queries:ro
+    command: ["python", "-m", "src.main", "--mode", "compatible"]
+    profiles: ["full", "all"]
+
+  # 🧠 Gemini 专扫模式
+  apikey-king-gemini:
+    image: apikey-king:latest
+    container_name: apikey-king-gemini
+    restart: unless-stopped
+    environment:
+      - GITHUB_TOKENS=${GITHUB_TOKENS}
+      - GEMINI_VALIDATION_ENABLED=true
+      - OPENROUTER_VALIDATION_ENABLED=false
+      - MODELSCOPE_VALIDATION_ENABLED=false
+      - HAJIMI_CHECK_MODEL=gemini-2.5-flash
+      - PROXY=${PROXY:-}
+    volumes:
+      - ./data/gemini:/app/data
+      - ./config/queries/gemini.txt:/app/data/queries.txt:ro
+    command: ["python", "-m", "src.main", "--mode", "gemini-only"]
+    profiles: ["gemini", "modes"]
+
+  # 🚀 OpenRouter 专扫模式  
+  apikey-king-openrouter:
+    image: apikey-king:latest
+    container_name: apikey-king-openrouter
+    restart: unless-stopped
+    environment:
+      - GITHUB_TOKENS=${GITHUB_TOKENS}
+      - GEMINI_VALIDATION_ENABLED=false
+      - OPENROUTER_VALIDATION_ENABLED=true
+      - MODELSCOPE_VALIDATION_ENABLED=false
+      - OPENROUTER_TEST_MODEL=deepseek/deepseek-chat-v3.1:free
+      - PROXY=${PROXY:-}
+    volumes:
+      - ./data/openrouter:/app/data
+      - ./config/queries/openrouter.txt:/app/data/queries.txt:ro
+    command: ["python", "-m", "src.main", "--mode", "openrouter-only"]
+    profiles: ["openrouter", "modes"]
+
+  # 🇨🇳 ModelScope 专扫模式
+  apikey-king-modelscope:
+    image: apikey-king:latest
+    container_name: apikey-king-modelscope
+    restart: unless-stopped
+    environment:
+      - GITHUB_TOKENS=${GITHUB_TOKENS}
+      - GEMINI_VALIDATION_ENABLED=false
+      - OPENROUTER_VALIDATION_ENABLED=false
+      - MODELSCOPE_VALIDATION_ENABLED=true
+      - MODELSCOPE_TEST_MODEL=Qwen/Qwen2-1.5B-Instruct
+      - PROXY=${PROXY:-}
+    volumes:
+      - ./data/modelscope:/app/data
+      - ./config/queries/modelscope.txt:/app/data/queries.txt:ro
+    command: ["python", "-m", "src.main", "--mode", "modelscope-only"]
+    profiles: ["modelscope", "modes"]
+
+  # 📊 监控服务（可选）
+  apikey-king-monitor:
+    image: apikey-king:latest
+    container_name: apikey-king-monitor
+    restart: unless-stopped
+    environment:
+      - GITHUB_TOKENS=${GITHUB_TOKENS}
+    volumes:
+      - ./data:/app/data:ro
+    command: ["tail", "-f", "/app/data/*/logs/keys_valid_detail_*.log"]
+    profiles: ["monitor"]
+
+# 网络配置
+networks:
+  default:
+    driver: bridge
+
+# 数据卷
+volumes:
+  data:
+    driver: local

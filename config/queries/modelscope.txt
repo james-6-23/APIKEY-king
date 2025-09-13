@@ -1,0 +1,9 @@
+# GitHub search queries for ModelScope API keys
+# One query per line, lines starting with # are comments
+
+# ModelScope API URL-based searches
+"https://api-inference.modelscope.cn/v1/" in:file
+"api-inference.modelscope.cn" in:file
+"modelscope.cn" in:file filename:.env
+ms- in:file "modelscope" 
+ms- in:file "api-inference.modelscope.cn"

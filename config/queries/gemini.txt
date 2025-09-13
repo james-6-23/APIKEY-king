@@ -1,0 +1,10 @@
+# GitHub search queries for Gemini API keys
+# One query per line, lines starting with # are comments
+
+# Basic Gemini API key searches
+AIzaSy in:file
+AIzaSy in:file filename:.env
+AIzaSy in:file filename:env.example
+AizaSy in:file filename:config.js
+"AIzaSy" in:file language:python
+"AIzaSy" in:file language:javascript

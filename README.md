@@ -6,7 +6,7 @@
 
 注意： 本项目正处于beta期间，所以功能、结构、接口等等都有可能变化，不保证稳定性，请自行承担风险。
 
-## ⚡ 快速开始（仅 ModelScope）
+## ⚡ 快速开始（全面验证）
 
 1) 配置 `.env`（不要提交到仓库）
 
@@ -24,30 +24,52 @@ cp .env.template .env
 # 创建查询文件
 cp queries.template data/queries.txt
 
-# 或手动创建
+# 或手动创建多种API密钥查询
 mkdir -p data
-echo '"https://api-inference.modelscope.cn/v1/" in:file' > data/queries.txt
-echo 'api-inference.modelscope.cn in:file' >> data/queries.txt
+echo 'AIzaSy in:file' > data/queries.txt
+echo '"https://api-inference.modelscope.cn/v1/" in:file' >> data/queries.txt
+echo '"https://openrouter.ai/api/v1" in:file' >> data/queries.txt
 ```
 
-3) 运行（仅 ModelScope 模式）
+3) 运行（推荐使用全面验证模式）
 
 ```bash
-python app/hajimi_king.py --mode modelscope-only
+# 全面扫描+验证模式（推荐）
+python -m src.main --mode compatible
+
+# 快捷脚本
+python scripts/quick_launch.py all
+
+# 专项模式
+python -m src.main --mode modelscope-only
+python -m src.main --mode openrouter-only  
+python -m src.main --mode gemini-only
 ```
 
 4) 查看输出
 
-- Key 列表：`data/keys/keys_valid_YYYYMMDD.txt`
-- 详细日志：`data/logs/keys_valid_detailYYYYMMDD.log`
+- 有效 Key 列表：`data/keys/keys_valid_YYYYMMDD.txt`
+- 详细验证日志：`data/logs/keys_valid_detailYYYYMMDD.log`
+- 验证统计：每个发现的密钥都会显示验证状态（✅有效/❌无效/⏱️限制）
 
 ## 🚀 核心功能
 
-1. **GitHub搜索Gemini Key** 🔍 - 基于自定义查询表达式搜索GitHub代码中的API密钥
-2. **代理支持** 🌐 - 支持多代理轮换，提高访问稳定性和成功率
-3. **增量扫描** 📊 - 支持断点续传，避免重复扫描已处理的文件
-4. **智能过滤** 🚫 - 自动过滤文档、示例、测试文件，专注有效代码
-5. **ModelScope 密钥提取** 🔑 - 支持提取 ModelScope API 密钥（ms-uuid 格式）
+1. **GitHub搜索三种API Key** 🔍 - 基于自定义查询表达式搜索GitHub代码中的API密钥
+   - **Gemini** keys (`AIzaSy...`) - Google AI 密钥
+   - **OpenRouter** keys (`sk-or-v1-...`) - OpenRouter 平台密钥  
+   - **ModelScope** keys (`ms-...`) - ModelScope 平台密钥
+2. **🆕 实时验证功能** ✅ - 支持所有三种密钥类型的实时验证
+   - **Gemini**: 通过 Google AI API 验证
+   - **OpenRouter**: 通过 OpenRouter API 验证，使用免费模型
+   - **ModelScope**: 通过 ModelScope Chat API 验证，使用轻量模型
+3. **灵活模式切换** 🎛️ - 支持多种扫描模式快速切换
+   - `--mode compatible`: 全面扫描+验证所有类型
+   - `--mode gemini-only`: 专注 Gemini 密钥
+   - `--mode openrouter-only`: 专注 OpenRouter 密钥
+   - `--mode modelscope-only`: 专注 ModelScope 密钥
+4. **代理支持** 🌐 - 支持多代理轮换，提高访问稳定性和成功率
+5. **增量扫描** 📊 - 支持断点续传，避免重复扫描已处理的文件
+6. **智能过滤** 🚫 - 自动过滤文档、示例、测试文件，专注有效代码
 
 ### 🔮 待开发功能 (TODO)
 
@@ -111,11 +133,25 @@ uv pip install -r pyproject.toml
 # 创建数据目录
 mkdir -p data
 
-# 运行程序（兼容模式：未命中 ms-key 时回退到 Gemini 提取）
-python app/hajimi_king.py --mode compatible
+# 🆕 全面扫描+验证模式（推荐）
+python -m src.main --mode compatible
 
-# 仅 ModelScope 模式：只提取包含 base_url 的 ms-key，不回退
-python app/hajimi_king.py --mode modelscope-only
+# 🆕 快捷启动脚本
+python scripts/quick_launch.py all              # 全面模式
+python scripts/quick_launch.py gemini           # 仅 Gemini
+python scripts/quick_launch.py openrouter       # 仅 OpenRouter  
+python scripts/quick_launch.py modelscope       # 仅 ModelScope
+
+# 🆕 Shell 脚本快捷方式 (Linux/Mac)
+./scripts/quick_scan.sh all                     # 全面模式
+./scripts/quick_scan.sh gm                      # Gemini 简写
+./scripts/quick_scan.sh or                      # OpenRouter 简写
+./scripts/quick_scan.sh ms                      # ModelScope 简写
+
+# 🆕 配置预设模式
+python -m src.main --config-preset gemini-only
+python -m src.main --config-preset openrouter-only
+python -m src.main --config-preset modelscope-only
 ```
 
 ### 5. 本地运行管理 🎮
@@ -251,7 +287,20 @@ PROXY=http://localhost:1080
 | `DATA_PATH` | `/app/data`        | 数据存储目录路径 📂                                     |
 | `DATE_RANGE_DAYS` | `730`              | 仓库年龄过滤（天数），只扫描指定天数内的仓库 📅                       |
 | `QUERIES_FILE` | `queries.txt`      | 搜索查询配置文件路径（表达式严重影响搜索的高效性) 🎯                    |
-| `HAJIMI_CHECK_MODEL` | `gemini-2.5-flash` | 用于验证key有效的模型 🤖                                 |
+
+### 🆕 验证功能配置 ✅
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `GEMINI_VALIDATION_ENABLED` | `true` | 是否启用 Gemini 密钥验证 🧠 |
+| `HAJIMI_CHECK_MODEL` | `gemini-2.5-flash` | Gemini 验证使用的模型（建议用最快的模型） 🤖 |
+| `GEMINI_TIMEOUT` | `30.0` | Gemini 验证超时时间（秒）⏱️ |
+| `OPENROUTER_VALIDATION_ENABLED` | `true` | 是否启用 OpenRouter 密钥验证 🚀 |
+| `OPENROUTER_TEST_MODEL` | `deepseek/deepseek-chat-v3.1:free` | OpenRouter 验证使用的模型（建议用免费模型）🆓 |
+| `OPENROUTER_TIMEOUT` | `30.0` | OpenRouter 验证超时时间（秒）⏱️ |
+| `MODELSCOPE_VALIDATION_ENABLED` | `true` | 是否启用 ModelScope 密钥验证 🇨🇳 |
+| `MODELSCOPE_TEST_MODEL` | `Qwen/Qwen2-1.5B-Instruct` | ModelScope 验证使用的模型（建议用轻量模型）💫 |
+| `MODELSCOPE_TIMEOUT` | `30.0` | ModelScope 验证超时时间（秒）⏱️ |
 
 ### 🟢 可选配置（不懂就别动）😅
 
@@ -264,23 +313,30 @@ PROXY=http://localhost:1080
 | `SCANNED_SHAS_FILE`              | `scanned_shas.txt`                 | 已扫描文件SHA记录文件名 📋 |
 | `FILE_PATH_BLACKLIST`            | `readme,docs,doc/,.md,example,...` | 文件路径黑名单，逗号分隔 🚫 |
 
-#### ModelScope 提取配置（仅提取、不校验）
+#### 🆕 API 密钥验证配置 ✅
+现在支持三种密钥类型的实时验证：
+- `GEMINI_VALIDATION_ENABLED`: 是否启用 Gemini 密钥验证（默认 true）
+- `OPENROUTER_VALIDATION_ENABLED`: 是否启用 OpenRouter 密钥验证（默认 true）
+- `MODELSCOPE_VALIDATION_ENABLED`: 是否启用 ModelScope 密钥验证（默认 true）
+- `*_TIMEOUT`: 各验证器的超时时间配置
+- `*_TEST_MODEL`: 验证时使用的测试模型（建议使用免费/轻量模型）
+
+#### 传统提取配置（兼容性保留）
+##### ModelScope 提取配置
 - `TARGET_BASE_URLS`: 逗号分隔的 base_url 或域名，文件包含其一才会尝试提取（默认含 `https://api-inference.modelscope.cn/v1/`）。
 - `MS_USE_LOOSE_PATTERN`: 是否使用宽松匹配（默认 false）。
 - `MS_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
 - `MS_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
-- `MODELSCOPE_EXTRACT_ONLY`: 仅提取并保存，不做验证（默认 true）。
 
-#### OpenRouter 提取配置（仅提取、不校验）
+##### OpenRouter 提取配置
 - `OPENROUTER_BASE_URLS`: 逗号分隔的 OpenRouter API 地址，文件包含其一才会尝试提取（默认含 `https://openrouter.ai/api/v1`）。
 - `OPENROUTER_USE_LOOSE_PATTERN`: 是否使用宽松匹配模式（默认 false）。
 - `OPENROUTER_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
 - `OPENROUTER_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
-- `OPENROUTER_EXTRACT_ONLY`: 仅提取并保存，不做验证（默认 true）。
 
 ### 配置文件示例 💫
 
-完整的 `.env` 文件示例：
+完整的 `.env` 文件示例（🆕 包含验证功能）：
 
 ```bash
 # 必填配置
@@ -290,8 +346,23 @@ GITHUB_TOKENS=ghp_your_token_here_1,ghp_your_token_here_2
 DATA_PATH=/app/data
 DATE_RANGE_DAYS=730
 QUERIES_FILE=queries.txt
-HAJIMI_CHECK_MODEL=gemini-2.5-flash
 PROXY=
+
+# 🆕 验证功能配置 ✅ 
+# Gemini 验证
+GEMINI_VALIDATION_ENABLED=true
+HAJIMI_CHECK_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT=30.0
+
+# OpenRouter 验证
+OPENROUTER_VALIDATION_ENABLED=true
+OPENROUTER_TEST_MODEL=deepseek/deepseek-chat-v3.1:free
+OPENROUTER_TIMEOUT=30.0
+
+# ModelScope 验证
+MODELSCOPE_VALIDATION_ENABLED=true
+MODELSCOPE_TEST_MODEL=Qwen/Qwen2-1.5B-Instruct
+MODELSCOPE_TIMEOUT=30.0
 
 # 高级配置（建议保持默认）
 VALID_KEY_PREFIX=keys/keys_valid_

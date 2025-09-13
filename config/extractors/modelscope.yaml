@@ -1,0 +1,21 @@
+# ModelScope API key extractor configuration
+name: "modelscope"
+enabled: true
+
+# Regular expression patterns for key detection
+patterns:
+  strict: "ms-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+  loose: "ms-[0-9a-f-]{30,}"
+
+# Base URLs that must be present in the file for extraction to occur
+base_urls:
+  - "https://api-inference.modelscope.cn/v1/"
+  - "api-inference.modelscope.cn"
+
+# Pattern matching settings
+use_loose_pattern: false
+proximity_chars: 0  # Only used when use_loose_pattern is true
+require_key_context: false
+
+# Validation settings
+extract_only: true  # ModelScope keys are not validated, only extracted
