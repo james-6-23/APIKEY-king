@@ -31,10 +31,14 @@ class Application:
         # Statistics
         self.skip_stats = {
             "time_filter": 0,
-            "sha_duplicate": 0, 
+            "sha_duplicate": 0,
             "age_filter": 0,
             "doc_filter": 0
         }
+
+        # Running statistics for real-time progress
+        self.running_stats = {"extracted": 0, "validated": 0, "valid": 0}
+        self.last_progress_time = 0
     
     def initialize(self) -> bool:
         """Initialize application components."""
@@ -330,38 +334,122 @@ class Application:
         
         except KeyboardInterrupt:
             logger.info("⛔ 用户中断 Interrupted by user")
+
+            # Save current batch results if any
+            if 'batch_result' in locals() and batch_result.results:
+                batch_result.finalize()
+                self.file_service.save_batch_result(batch_result)
+                logger.info(f"💾 已保存当前批次结果 Saved current batch results")
+
+            # Display final file locations
+            mode_name = self.scan_mode.value if hasattr(self.scan_mode, 'value') else str(self.scan_mode)
+            output_files = self.file_service.get_output_file_paths(mode_name)
+            logger.separator("📁 密钥文件位置 Key File Locations")
+
+            from pathlib import Path
+            for file_type, file_path in output_files.items():
+                if Path(file_path).exists():
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            key_count = sum(1 for line in f if line.strip())
+                        logger.info(f"💾 {file_type}: {file_path} ({key_count} keys)")
+                    except Exception:
+                        logger.info(f"💾 {file_type}: {file_path} (file exists)")
+                else:
+                    logger.info(f"📄 {file_type}: {file_path} (not created)")
+
             self._save_checkpoint()
             logger.info(f"📊 最终统计 Final stats - 总共发现有效密钥 Total valid keys found: {total_valid_keys}")
     
     def _scan_item(self, item: Dict[str, Any], content: str) -> ScanResult:
-        """Scan a single item for API keys."""
+        """Scan a single item with enhanced logging and immediate file saving."""
         context = {
             'file_path': item.get('path', ''),
             'repository': item.get('repository', {}),
             'proxy_config': None  # Could add proxy config here
         }
-        
+
+        repo_name = item.get('repository', {}).get('full_name', '')
+        file_path = item.get('path', '')
+        file_url = item.get('html_url', '')
+
         # Use scanner to process content
         scan_results = self.scanner.scan_content(content, context)
-        
+
         if not scan_results['summary']['total_keys_found']:
             return None
-        
-        # Create ScanResult object
+
+        # Log extraction results immediately
+        for extractor_name, extraction_result in scan_results['extracted_keys'].items():
+            if extraction_result.keys:
+                logger.key_extracted(extractor_name, len(extraction_result.keys), repo_name, file_path)
+
+        # Process validation results with immediate logging and saving
+        total_extracted = scan_results['summary']['total_keys_found']
+        total_valid = 0
+
+        for key, validation_result in scan_results['validation_results'].items():
+            # Determine key type from key format
+            key_type = self._determine_key_type(key)
+            key_prefix = key[:12] + "..." if len(key) > 12 else key
+
+            # Log validation start
+            logger.key_validating(key_prefix, key_type)
+
+            # Log validation result and save immediately
+            if validation_result.is_valid:
+                logger.key_validation_success(key_prefix, key_type)
+                saved_file = self.file_service.save_key_immediately(
+                    key, key_type, repo_name, file_path, file_url,
+                    {'is_valid': True, 'status': 'valid'}
+                )
+                if saved_file:
+                    logger.key_saved_immediately(key_prefix, saved_file)
+                total_valid += 1
+            else:
+                reason = validation_result.error_message or validation_result.status or "Unknown"
+                logger.key_validation_failed(key_prefix, key_type, reason)
+
+                # Save rate-limited keys immediately
+                if validation_result.status == 'rate_limited':
+                    saved_file = self.file_service.save_key_immediately(
+                        key, key_type, repo_name, file_path, file_url,
+                        {'is_valid': False, 'status': 'rate_limited'}
+                    )
+                    if saved_file:
+                        logger.key_saved_immediately(key_prefix, saved_file)
+
+        # Update running totals and log progress
+        self.running_stats['extracted'] += total_extracted
+        self.running_stats['validated'] += len(scan_results['validation_results'])
+        self.running_stats['valid'] += total_valid
+
+        # Log progress summary every 10 keys or every 2 minutes
+        import time
+        if (self.running_stats['extracted'] % 10 == 0 or
+            time.time() - self.last_progress_time > 120):
+            logger.progress_summary(
+                self.running_stats['extracted'],
+                self.running_stats['validated'],
+                self.running_stats['valid']
+            )
+            self.last_progress_time = time.time()
+
+        # Create ScanResult object (for compatibility)
         result = ScanResult(
-            file_url=item.get('html_url', ''),
-            repository_name=item.get('repository', {}).get('full_name', ''),
-            file_path=item.get('path', ''),
+            file_url=file_url,
+            repository_name=repo_name,
+            file_path=file_path,
             extracted_keys={},
             validation_results={},
             scan_metadata=scan_results['summary']
         )
-        
+
         # Process extraction results
         for extractor_name, extraction_result in scan_results['extracted_keys'].items():
             result.extracted_keys[extractor_name] = extraction_result.keys
-        
-        # Process validation results  
+
+        # Process validation results
         for key, validation_result in scan_results['validation_results'].items():
             result.validation_results[key] = {
                 'is_valid': validation_result.is_valid,
@@ -369,9 +457,22 @@ class Application:
                 'error_message': validation_result.error_message,
                 'metadata': validation_result.metadata
             }
-        
+
         return result
-    
+
+    def _determine_key_type(self, key: str) -> str:
+        """Determine key type from key format."""
+        if key.startswith('AIzaSy'):
+            return 'gemini'
+        elif key.startswith('sk-or-v1-'):
+            return 'openrouter'
+        elif key.startswith('ms-'):
+            return 'modelscope'
+        elif key.startswith('sk-'):
+            return 'siliconflow'
+        else:
+            return 'unknown'
+
     def _should_skip_item(self, item: Dict[str, Any]) -> bool:
         """Check if item should be skipped."""
         # Check if SHA already processed
@@ -409,20 +510,28 @@ class Application:
                        f"文档 Docs: {self.skip_stats['doc_filter']}")
     
     def _print_startup_info(self) -> None:
-        """Print startup information."""
+        """Print enhanced startup information."""
         logger.startup_banner()
         logger.github_tokens(len(self.config.github.tokens))
         logger.info(f"📅 日期过滤 Date filter: {self.config.scan.date_range_days} 天 days")
-        
+
         if self.config.get_proxy_configs():
             logger.info(f"🌐 代理配置 Proxies: {len(self.config.get_proxy_configs())} 个已配置 configured")
-        
+
+        # Display current scan mode
+        mode_name = self.scan_mode.value if hasattr(self.scan_mode, 'value') else str(self.scan_mode)
+        logger.mode_activated(mode_name, validation=True)
+
+        # Display output file paths
+        output_files = self.file_service.get_output_file_paths(mode_name)
+        logger.output_files_info(mode_name, output_files)
+
         if self.checkpoint.last_scan_time:
             logger.info(f"💾 增量扫描模式 Incremental scan mode - 上次扫描 Last scan: {self.checkpoint.last_scan_time}")
             logger.info(f"📁 已扫描文件 Already scanned: {len(self.checkpoint.scanned_shas)} 个文件 files")
         else:
             logger.info("💾 完整扫描模式 Full scan mode")
-        
+
         logger.success("系统就绪 System ready - 开始扫描 Starting scan")
 
 

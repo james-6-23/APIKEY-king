@@ -133,7 +133,7 @@ class FileService:
     def save_batch_result(self, batch_result: BatchScanResult) -> None:
         """Save batch scan results."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
+
         # Save summary
         summary_file = self.data_path / "logs" / f"batch_summary_{timestamp}.json"
         try:
@@ -141,10 +141,44 @@ class FileService:
                 json.dump(batch_result.get_summary(), f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Error saving batch summary: {e}")
-        
+
         # Save individual results
         for result in batch_result.results:
             self.save_scan_result(result)
+
+    def save_key_immediately(self, key: str, key_type: str, repo_name: str, file_path: str, file_url: str, validation_result: Dict[str, Any]) -> Optional[str]:
+        """Save a single key immediately after validation."""
+        timestamp = datetime.now().strftime('%Y%m%d')
+
+        # Determine file names based on key type and mode
+        if validation_result.get('is_valid', False):
+            # Save to valid keys file
+            valid_keys_file = self.data_path / "keys" / f"keys_valid_{key_type}_{timestamp}.txt"
+            self._append_single_key_to_file(valid_keys_file, key)
+
+            # Save to detailed log immediately
+            detail_log_file = self.data_path / "logs" / f"keys_valid_detail_{key_type}_{timestamp}.log"
+            self._append_single_key_log(detail_log_file, key, repo_name, file_path, file_url, validation_result)
+
+            return str(valid_keys_file)
+
+        elif validation_result.get('status') == 'rate_limited':
+            # Save to rate-limited file
+            rate_limited_file = self.data_path / "keys" / f"key_429_{key_type}_{timestamp}.txt"
+            self._append_single_key_to_file(rate_limited_file, key)
+            return str(rate_limited_file)
+
+        return None
+
+    def get_output_file_paths(self, mode: str) -> Dict[str, str]:
+        """Get output file paths for current mode and date."""
+        timestamp = datetime.now().strftime('%Y%m%d')
+
+        return {
+            "有效密钥文件 Valid keys file": str(self.data_path / "keys" / f"keys_valid_{mode}_{timestamp}.txt"),
+            "详细日志文件 Detail log file": str(self.data_path / "logs" / f"keys_valid_detail_{mode}_{timestamp}.log"),
+            "限流密钥文件 Rate-limited keys file": str(self.data_path / "keys" / f"key_429_{mode}_{timestamp}.txt")
+        }
     
     def _create_default_queries_file(self, queries_path: Path) -> None:
         """Create default queries file."""
@@ -207,6 +241,32 @@ class FileService:
             if validation.get('status') == 'rate_limited':
                 rate_limited.add(key)
         return rate_limited
+
+    def _append_single_key_to_file(self, file_path: Path, key: str) -> None:
+        """Append a single key to file immediately."""
+        try:
+            with open(file_path, 'a', encoding='utf-8') as f:
+                f.write(f"{key}\n")
+                f.flush()  # Ensure immediate write to disk
+        except Exception as e:
+            print(f"Error appending key to {file_path}: {e}")
+
+    def _append_single_key_log(self, file_path: Path, key: str, repo_name: str, file_path_src: str, file_url: str, validation_result: Dict[str, Any]) -> None:
+        """Append detailed log for a single key immediately."""
+        try:
+            with open(file_path, 'a', encoding='utf-8') as f:
+                f.write(f"TIME: {datetime.now().isoformat()}\n")
+                f.write(f"URL: {file_url}\n")
+                f.write(f"REPO: {repo_name}\n")
+                f.write(f"PATH: {file_path_src}\n")
+                status = "VALID" if validation_result.get('is_valid', False) else "INVALID"
+                f.write(f"KEY ({status}): {key}\n")
+                if validation_result.get('error_message'):
+                    f.write(f"ERROR: {validation_result['error_message']}\n")
+                f.write("-" * 80 + "\n")
+                f.flush()  # Ensure immediate write to disk
+        except Exception as e:
+            print(f"Error appending detailed log: {e}")
     
     def get_output_files(self) -> Dict[str, List[str]]:
         """Get list of output files by category."""

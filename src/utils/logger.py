@@ -209,7 +209,7 @@ class Logger:
             percentage = (current / total * 100) if total > 0 else 0
             msg = f"📈 进度 Progress {message} {percentage:.1f}% ({current}/{total})"
             self._safe_log(self._logger.info, msg, *args, **kwargs)
-    
+
     def network(self, message: str, *args, **kwargs):
         """Network-related logging."""
         if hasattr(self._logger, 'network'):
@@ -217,7 +217,7 @@ class Logger:
         else:
             msg = f"🌐 网络 Network {message}"
             self._safe_log(self._logger.info, msg, *args, **kwargs)
-    
+
     def file_op(self, message: str, *args, **kwargs):
         """File operation logging."""
         if hasattr(self._logger, 'file_op'):
@@ -225,6 +225,47 @@ class Logger:
         else:
             msg = f"📁 文件 File {message}"
             self._safe_log(self._logger.info, msg, *args, **kwargs)
+
+    def key_extracted(self, key_type: str, count: int, repo: str, file_path: str):
+        """Log immediate key extraction with source info."""
+        msg = f"🔑 提取密钥 Extracted: {count} {key_type} keys from {repo}/{file_path}"
+        self.info(msg)
+
+    def key_validating(self, key_prefix: str, key_type: str):
+        """Log key validation start."""
+        msg = f"🔍 验证中 Validating: {key_prefix}... ({key_type})"
+        self.info(msg)
+
+    def key_validation_success(self, key_prefix: str, key_type: str):
+        """Log successful key validation."""
+        msg = f"✅ 验证成功 Valid: {key_prefix}... ({key_type})"
+        self.success(msg)
+
+    def key_validation_failed(self, key_prefix: str, key_type: str, reason: str):
+        """Log failed key validation."""
+        msg = f"❌ 验证失败 Invalid: {key_prefix}... ({key_type}) - {reason}"
+        self.error(msg)
+
+    def key_saved_immediately(self, key_prefix: str, file_path: str):
+        """Log immediate key saving."""
+        msg = f"💾 密钥已保存 Key Saved: {key_prefix}... → {file_path}"
+        self.info(msg)
+
+    def progress_summary(self, extracted: int, validated: int, valid: int):
+        """Log current progress summary."""
+        msg = f"📊 当前进度 Current Progress: 已提取 Extracted {extracted} keys, 已验证 Validated {validated} keys, 有效 Valid {valid} keys"
+        self.info(msg)
+
+    def output_files_info(self, mode: str, files: dict):
+        """Log output file paths at startup."""
+        self.separator(f"📁 {mode} 模式输出文件 Mode Output Files")
+        for file_type, file_path in files.items():
+            self.info(f"📄 {file_type}: {file_path}")
+
+    def key_rejection_reason(self, key_prefix: str, key_type: str, reason: str):
+        """Log specific reason for key rejection."""
+        msg = f"🚫 密钥被拒 Key Rejected: {key_prefix}... ({key_type}) - {reason}"
+        self.warning(msg)
     
     def rate_limit(self, message: str, *args, **kwargs):
         """Rate limit logging."""

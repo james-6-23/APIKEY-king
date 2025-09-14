@@ -23,7 +23,9 @@ class SiliconFlowExtractor(BaseExtractor):
     
     def extract(self, content: str, context: Dict[str, Any] = None) -> ExtractionResult:
         """Extract SiliconFlow API keys from content."""
-        if not self.should_process(content):
+        if context is None:
+            context = {}
+        if not self.should_process(content, context):
             return ExtractionResult(keys=[], metadata={})
         
         keys = []
@@ -56,18 +58,18 @@ class SiliconFlowExtractor(BaseExtractor):
         
         return ExtractionResult(keys=keys, metadata=metadata)
     
-    def should_process(self, content: str) -> bool:
+    def should_process(self, content: str, context: Dict[str, Any]) -> bool:
         """Check if content should be processed for SiliconFlow keys."""
         if not self.config.enabled:
             return False
-        
+
         # Check for required base URLs
         if self.config.base_urls:
             content_lower = content.lower()
             has_base_url = any(url.lower() in content_lower for url in self.config.base_urls)
             if not has_base_url:
                 return False
-        
+
         # Check for key context if required
         if self.config.require_key_context:
             context_keywords = ['siliconflow', 'api_key', 'openai', 'client']
@@ -75,7 +77,7 @@ class SiliconFlowExtractor(BaseExtractor):
             has_context = any(keyword in content_lower for keyword in context_keywords)
             if not has_context:
                 return False
-        
+
         return True
     
     def _is_valid_key_format(self, key: str) -> bool:
