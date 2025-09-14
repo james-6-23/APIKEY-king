@@ -87,11 +87,18 @@ class FileService:
     def load_queries(self, queries_file: str) -> List[str]:
         """Load search queries from file."""
         queries = []
-        queries_path = self.data_path / queries_file
-        
+
+        # Handle both absolute and relative paths
+        if queries_file.startswith('config/') or queries_file.startswith('./config/'):
+            # Config directory path - use as is
+            queries_path = Path(queries_file)
+        else:
+            # Legacy path - use data_path
+            queries_path = self.data_path / queries_file
+
         if not queries_path.exists():
             self._create_default_queries_file(queries_path)
-        
+
         try:
             with open(queries_path, 'r', encoding='utf-8') as f:
                 for line in f:
@@ -100,7 +107,7 @@ class FileService:
                         queries.append(line)
         except Exception as e:
             print(f"Error loading queries: {e}")
-        
+
         return queries
     
     def save_scan_result(self, result: ScanResult) -> None:
@@ -142,6 +149,9 @@ class FileService:
     def _create_default_queries_file(self, queries_path: Path) -> None:
         """Create default queries file."""
         try:
+            # Ensure parent directory exists
+            queries_path.parent.mkdir(parents=True, exist_ok=True)
+
             with open(queries_path, 'w', encoding='utf-8') as f:
                 f.write("# GitHub search queries\n")
                 f.write("# One query per line\n")
@@ -154,6 +164,10 @@ class FileService:
                 f.write("# ModelScope API searches\n")
                 f.write('"https://api-inference.modelscope.cn/v1/" in:file\n')
                 f.write("api-inference.modelscope.cn in:file\n")
+                f.write("\n")
+                f.write("# SiliconFlow API searches\n")
+                f.write('"https://api.siliconflow.cn/v1" in:file\n')
+                f.write('"sk-" AND "siliconflow" in:file\n')
         except Exception as e:
             print(f"Error creating default queries file: {e}")
     

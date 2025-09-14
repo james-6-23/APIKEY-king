@@ -5,9 +5,10 @@ SiliconFlow API key validator.
 import os
 import time
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, List
 
-from ..core import BaseValidator, ValidationResult
+from .base import BaseValidator
+from ..core import ValidationResult
 from ..models.config import ValidatorConfig
 from ..utils.logger import logger
 
@@ -17,8 +18,19 @@ class SiliconFlowValidator(BaseValidator):
     
     def __init__(self, config: ValidatorConfig):
         super().__init__(config)
-        self.name = "siliconflow"
         self.base_url = "https://api.siliconflow.cn/v1"
+
+    @property
+    def supported_key_types(self) -> List[str]:
+        """Return list of supported key types."""
+        return ['siliconflow']
+
+    def can_validate(self, key: str) -> bool:
+        """Check if this validator can validate the given key."""
+        # SiliconFlow keys start with 'sk-' and are 40-64 characters long
+        import re
+        pattern = r'^sk-[a-z]{40,64}$'
+        return bool(re.match(pattern, key, re.IGNORECASE))
     
     def validate(self, key: str, context: Dict[str, Any] = None) -> ValidationResult:
         """Validate SiliconFlow API key."""

@@ -5,7 +5,8 @@ SiliconFlow API key extractor.
 import re
 from typing import List, Dict, Any
 
-from ..core import BaseExtractor, ExtractionResult
+from .base import BaseExtractor
+from ..core import ExtractionResult
 from ..models.config import ExtractorConfig
 
 
@@ -14,7 +15,11 @@ class SiliconFlowExtractor(BaseExtractor):
     
     def __init__(self, config: ExtractorConfig):
         super().__init__(config)
-        self.name = "siliconflow"
+
+    @property
+    def supported_services(self) -> List[str]:
+        """Return list of supported service names."""
+        return ['siliconflow']
     
     def extract(self, content: str, context: Dict[str, Any] = None) -> ExtractionResult:
         """Extract SiliconFlow API keys from content."""
