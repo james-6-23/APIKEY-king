@@ -12,7 +12,7 @@ github_api_url: "https://api.github.com/search/code"
 # Scanning configuration
 date_range_days: 730
 file_path_blacklist: "readme,docs,doc/,.md,example,sample,tutorial,test,spec,demo,mock"
-queries_file: "queries.txt"
+queries_file: "config/queries/default.txt"
 
 # Logging configuration
 log_level: "INFO"

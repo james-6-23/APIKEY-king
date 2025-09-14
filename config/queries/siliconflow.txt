@@ -1,0 +1,32 @@
+# SiliconFlow API 密钥搜索查询
+# 针对 SiliconFlow 平台优化的搜索策略
+
+# 基础搜索 - SiliconFlow API URL
+"https://api.siliconflow.cn/v1" in:file
+"api.siliconflow.cn/v1" in:file
+"siliconflow.cn" in:file
+
+# 密钥格式搜索 - sk- 开头的密钥
+"sk-" AND "siliconflow" in:file
+"sk-" AND "api.siliconflow.cn" in:file
+
+# 上下文搜索 - 常见的配置模式
+"base_url" AND "siliconflow" in:file
+"api_key" AND "siliconflow" in:file
+"OpenAI" AND "siliconflow" in:file
+
+# 特定文件类型搜索
+"siliconflow" in:file extension:py
+"siliconflow" in:file extension:js
+"siliconflow" in:file extension:ts
+"siliconflow" in:file filename:.env
+
+# 代码模式搜索
+"client = OpenAI" AND "siliconflow" in:file
+"base_url" AND "api.siliconflow.cn" in:file
+"YOUR_API_KEY_FROM_CLOUD_SILICONFLOW_CN" in:file
+
+# 配置文件搜索
+"siliconflow" in:file filename:config
+"siliconflow" in:file filename:.json
+"siliconflow" in:file filename:.yaml

@@ -132,6 +132,15 @@ class ConfigService:
             model_name=os.getenv('HAJIMI_CHECK_MODEL', 'gemini-2.5-flash'),
             timeout=float(os.getenv('GEMINI_TIMEOUT', '30.0'))
         )
+
+        # Create default SiliconFlow validator
+        validators['siliconflow'] = ValidatorConfig(
+            name='siliconflow',
+            enabled=self._parse_bool(os.getenv('SILICONFLOW_VALIDATION_ENABLED', 'true')),
+            api_endpoint='api.siliconflow.cn',
+            model_name=os.getenv('SILICONFLOW_TEST_MODEL', 'Qwen/Qwen2.5-72B-Instruct'),
+            timeout=float(os.getenv('SILICONFLOW_TIMEOUT', '30.0'))
+        )
         
         # Create default OpenRouter validator
         validators['openrouter'] = ValidatorConfig(
@@ -141,7 +150,16 @@ class ConfigService:
             model_name=os.getenv('OPENROUTER_TEST_MODEL', 'deepseek/deepseek-chat-v3.1:free'),
             timeout=float(os.getenv('OPENROUTER_TIMEOUT', '30.0'))
         )
-        
+
+        # Create default ModelScope validator
+        validators['modelscope'] = ValidatorConfig(
+            name='modelscope',
+            enabled=self._parse_bool(os.getenv('MODELSCOPE_VALIDATION_ENABLED', 'true')),
+            api_endpoint='https://api-inference.modelscope.cn/v1/chat/completions',
+            model_name=os.getenv('MODELSCOPE_TEST_MODEL', 'Qwen/Qwen2-1.5B-Instruct'),
+            timeout=float(os.getenv('MODELSCOPE_TIMEOUT', '30.0'))
+        )
+
         return validators
     
     def _apply_extractor_env_overrides(self, extractors: Dict[str, ExtractorConfig]) -> None:
@@ -171,6 +189,19 @@ class ConfigService:
                 extractors['openrouter'].require_key_context = self._parse_bool(os.getenv('OPENROUTER_REQUIRE_KEY_CONTEXT'))
             if os.getenv('OPENROUTER_EXTRACT_ONLY'):
                 extractors['openrouter'].extract_only = self._parse_bool(os.getenv('OPENROUTER_EXTRACT_ONLY'))
+
+        # SiliconFlow extractor overrides
+        if 'siliconflow' in extractors:
+            if os.getenv('SILICONFLOW_BASE_URLS'):
+                extractors['siliconflow'].base_urls = self._parse_list(os.getenv('SILICONFLOW_BASE_URLS'))
+            if os.getenv('SILICONFLOW_USE_LOOSE_PATTERN'):
+                extractors['siliconflow'].use_loose_pattern = self._parse_bool(os.getenv('SILICONFLOW_USE_LOOSE_PATTERN'))
+            if os.getenv('SILICONFLOW_PROXIMITY_CHARS'):
+                extractors['siliconflow'].proximity_chars = int(os.getenv('SILICONFLOW_PROXIMITY_CHARS', '0'))
+            if os.getenv('SILICONFLOW_REQUIRE_KEY_CONTEXT'):
+                extractors['siliconflow'].require_key_context = self._parse_bool(os.getenv('SILICONFLOW_REQUIRE_KEY_CONTEXT'))
+            if os.getenv('SILICONFLOW_EXTRACT_ONLY'):
+                extractors['siliconflow'].extract_only = self._parse_bool(os.getenv('SILICONFLOW_EXTRACT_ONLY'))
     
     def _parse_token_list(self, tokens_str: str) -> list:
         """Parse comma-separated token list."""

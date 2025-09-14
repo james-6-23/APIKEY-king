@@ -1,72 +1,94 @@
-# 🎪 Hajimi King 🏆
+# 🔑 APIKEY-king
 
-[查看变更日志](CHANGELOG.md)
+> **多平台 AI API 密钥发现与验证工具**
 
-人人都是哈基米大王  👑  
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker-compose.yml)
 
-注意： 本项目正处于beta期间，所以功能、结构、接口等等都有可能变化，不保证稳定性，请自行承担风险。
+APIKEY-king 是一个专业的 AI API 密钥安全扫描工具，支持 **4 大主流 AI 平台**的密钥发现和实时验证。
 
-## ⚡ 快速开始（全面验证）
+## ⚡ 快速开始
 
-1) 配置 `.env`（不要提交到仓库）
+### 🚀 方式一：一键配置（推荐新手）
 
 ```bash
-# 复制配置模板
-cp .env.template .env
+# 运行配置向导
+python scripts/quick_setup.py
 
-# 编辑配置文件，填入你的 GitHub Token
-# GITHUB_TOKENS=ghp_xxx1,ghp_xxx2
+# 按提示输入 GitHub Token 和代理设置
+# 自动生成 .env 配置文件
+
+# 开始扫描
+python -m src.main --mode compatible
 ```
 
-2) 准备查询 `data/queries.txt`
+### 🔧 方式二：手动配置
 
 ```bash
-# 创建查询文件
-cp queries.template data/queries.txt
+# 1. 复制简化配置模板
+cp .env.simple .env
 
-# 或手动创建多种API密钥查询
-mkdir -p data
-echo 'AIzaSy in:file' > data/queries.txt
-echo '"https://api-inference.modelscope.cn/v1/" in:file' >> data/queries.txt
-echo '"https://openrouter.ai/api/v1" in:file' >> data/queries.txt
+# 2. 编辑配置文件，只需填入两个核心配置：
+# GITHUB_TOKENS=your_github_token_here
+# PROXY=http://localhost:1080
+
+# 3. 开始扫描（系统自动使用预置查询）
+python -m src.main --mode compatible
 ```
 
-3) 运行（推荐使用全面验证模式）
+### 🎯 支持的扫描模式
 
 ```bash
-# 全面扫描+验证模式（推荐）
+# 全面扫描（推荐）- 扫描所有4种平台
 python -m src.main --mode compatible
 
-# 快捷脚本
-python scripts/quick_launch.py all
-
-# 专项模式
-python -m src.main --mode modelscope-only
-python -m src.main --mode openrouter-only  
-python -m src.main --mode gemini-only
+# 单平台专项扫描
+python -m src.main --mode gemini-only      # Google AI 专项
+python -m src.main --mode openrouter-only  # OpenRouter 专项
+python -m src.main --mode modelscope-only  # ModelScope 专项
+python -m src.main --mode siliconflow-only # SiliconFlow 专项
 ```
 
-4) 查看输出
+### 📊 查看扫描结果
 
-- 有效 Key 列表：`data/keys/keys_valid_YYYYMMDD.txt`
-- 详细验证日志：`data/logs/keys_valid_detailYYYYMMDD.log`
-- 验证统计：每个发现的密钥都会显示验证状态（✅有效/❌无效/⏱️限制）
+- **有效密钥列表**：`data/keys/keys_valid_YYYYMMDD.txt`
+- **详细验证日志**：`data/logs/keys_valid_detail_YYYYMMDD.log`
+- **扫描进度记录**：`data/checkpoint.json`
+- **验证状态**：✅有效 / ❌无效 / ⏱️限制 / 🌐网络错误
 
-## 🚀 核心功能
+## � 最小配置要求
 
-1. **GitHub搜索三种API Key** 🔍 - 基于自定义查询表达式搜索GitHub代码中的API密钥
+只需配置两个核心选项即可开始使用：
+
+```bash
+# 必填：GitHub Token（获取地址：https://github.com/settings/tokens）
+GITHUB_TOKENS=your_github_token_here
+
+# 推荐：代理设置（避免IP被封）
+PROXY=http://localhost:1080
+```
+
+其他所有配置都有合理的默认值，无需手动设置！
+
+## �🚀 核心功能
+
+1. **GitHub搜索四种API Key** 🔍 - 基于自定义查询表达式搜索GitHub代码中的API密钥
    - **Gemini** keys (`AIzaSy...`) - Google AI 密钥
-   - **OpenRouter** keys (`sk-or-v1-...`) - OpenRouter 平台密钥  
+   - **OpenRouter** keys (`sk-or-v1-...`) - OpenRouter 平台密钥
    - **ModelScope** keys (`ms-...`) - ModelScope 平台密钥
-2. **🆕 实时验证功能** ✅ - 支持所有三种密钥类型的实时验证
+   - **SiliconFlow** keys (`sk-...`) - SiliconFlow 平台密钥
+2. **🆕 实时验证功能** ✅ - 支持所有四种密钥类型的实时验证
    - **Gemini**: 通过 Google AI API 验证
    - **OpenRouter**: 通过 OpenRouter API 验证，使用免费模型
    - **ModelScope**: 通过 ModelScope Chat API 验证，使用轻量模型
+   - **SiliconFlow**: 通过 SiliconFlow API 验证，使用高效模型
 3. **灵活模式切换** 🎛️ - 支持多种扫描模式快速切换
    - `--mode compatible`: 全面扫描+验证所有类型
    - `--mode gemini-only`: 专注 Gemini 密钥
    - `--mode openrouter-only`: 专注 OpenRouter 密钥
    - `--mode modelscope-only`: 专注 ModelScope 密钥
+   - `--mode siliconflow-only`: 专注 SiliconFlow 密钥
 4. **代理支持** 🌐 - 支持多代理轮换，提高访问稳定性和成功率
 5. **增量扫描** 📊 - 支持断点续传，避免重复扫描已处理的文件
 6. **智能过滤** 🚫 - 自动过滤文档、示例、测试文件，专注有效代码
@@ -314,11 +336,12 @@ PROXY=http://localhost:1080
 | `FILE_PATH_BLACKLIST`            | `readme,docs,doc/,.md,example,...` | 文件路径黑名单，逗号分隔 🚫 |
 
 #### 🆕 API 密钥验证配置 ✅
-现在支持三种密钥类型的实时验证：
+现在支持四种密钥类型的实时验证：
 - `GEMINI_VALIDATION_ENABLED`: 是否启用 Gemini 密钥验证（默认 true）
 - `OPENROUTER_VALIDATION_ENABLED`: 是否启用 OpenRouter 密钥验证（默认 true）
 - `MODELSCOPE_VALIDATION_ENABLED`: 是否启用 ModelScope 密钥验证（默认 true）
-- `*_TIMEOUT`: 各验证器的超时时间配置
+- `SILICONFLOW_VALIDATION_ENABLED`: 是否启用 SiliconFlow 密钥验证（默认 true）
+- `*_TIMEOUT`: 各验证器的超时时间配置（默认 30 秒）
 - `*_TEST_MODEL`: 验证时使用的测试模型（建议使用免费/轻量模型）
 
 #### 传统提取配置（兼容性保留）
@@ -364,6 +387,11 @@ MODELSCOPE_VALIDATION_ENABLED=true
 MODELSCOPE_TEST_MODEL=Qwen/Qwen2-1.5B-Instruct
 MODELSCOPE_TIMEOUT=30.0
 
+# SiliconFlow 验证
+SILICONFLOW_VALIDATION_ENABLED=true
+SILICONFLOW_TEST_MODEL=Qwen/Qwen2.5-72B-Instruct
+SILICONFLOW_TIMEOUT=30.0
+
 # 高级配置（建议保持默认）
 VALID_KEY_PREFIX=keys/keys_valid_
 RATE_LIMITED_KEY_PREFIX=keys/key_429_
@@ -401,5 +429,22 @@ AizaSy in:file filename:.env
 - ✅ 不要将真实的API密钥提交到版本控制 🙈
 - ✅ 定期检查和清理发现的密钥文件 🧹
 
-💖 **享受使用 Hajimi King 的快乐时光！** 🎉✨🎊
+---
+
+## 🤝 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+- � **Bug 报告**: 请提供详细的错误信息和复现步骤
+- 💡 **功能建议**: 欢迎提出新的功能想法
+- 📝 **文档改进**: 帮助完善文档和示例
+- 🔧 **代码贡献**: 遵循现有代码风格和测试规范
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+---
+
+�💖 **享受使用 APIKEY-king 的快乐时光！** 🎉✨🎊
 

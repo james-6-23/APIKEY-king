@@ -1,0 +1,22 @@
+# SiliconFlow API key extractor configuration (with validation support)
+name: "siliconflow"
+enabled: true
+
+# Regular expression patterns for key detection
+patterns:
+  strict: "sk-[a-z]{40,64}"
+  loose: "sk-[a-z]{30,}"
+
+# Base URLs that must be present in the file for extraction to occur
+base_urls:
+  - "https://api.siliconflow.cn/v1"
+  - "api.siliconflow.cn"
+  - "siliconflow.cn"
+
+# Pattern matching settings
+use_loose_pattern: false
+proximity_chars: 0  # Only used when use_loose_pattern is true
+require_key_context: true
+
+# Validation settings
+extract_only: false  # Enable validation for SiliconFlow keys

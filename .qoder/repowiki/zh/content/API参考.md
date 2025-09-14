@@ -2,19 +2,18 @@
 
 <cite>
 **本文档中引用的文件**   
-- [config.py](file://common/config.py)
-- [hajimi_king.py](file://app/hajimi_king.py)
-- [github_client.py](file://utils/github_client.py)
-- [file_manager.py](file://utils/file_manager.py)
-- [Logger.py](file://common/Logger.py) - *在最近的提交中更新*
+- [config.py](file://src\models\config.py) - *重构后的配置模型*
+- [main.py](file://src\main.py) - *更新的主应用入口*
+- [core/__init__.py](file://src\core\__init__.py) - *新增扫描模式枚举*
 </cite>
 
 ## 更新摘要
 **已做更改**   
-- 更新了“内部函数接口”部分，新增了 `Logger` 类的多个方法说明
-- 添加了对 `Logger.py` 文件的引用，以反映日志模块的重构
-- 修正了文档中未提及的 `Logger` 新增方法，确保与代码实现一致
-- 维护并更新了文档级和章节级的源文件引用系统
+- 完全重构了“环境变量配置”部分，基于新的 `AppConfig` 数据模型
+- 更新了“命令行参数”部分，新增三种扫描模式：`openrouter-only`、`gemini-only` 和 `compatible`
+- 重写了“参数组合使用示例”，以匹配新的配置结构和 CLI 参数
+- 移除了过时的内部函数接口描述，更新为基于新代码结构的说明
+- 同步更新了所有源文件引用路径，反映项目重构后的实际位置
 
 ## 目录
 1. [API参考](#api参考)
@@ -25,95 +24,116 @@
 
 ## 环境变量配置
 
-本节详细列出 `config.py` 文件中定义的所有可配置环境变量，包括其名称、数据类型、默认值、取值范围和功能描述。
+本节详细列出 `config.py` 文件中定义的 `AppConfig` 模型所支持的所有配置项。新的配置系统采用结构化数据类，取代了旧的扁平化环境变量。
 
 **Section sources**
-- [config.py](file://common/config.py#L12-L169)
+- [config.py](file://src\models\config.py#L82-L111) - *重构后的主配置模型*
 
 ### GitHub 配置
-| 环境变量名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
+| 配置项名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
 | --- | --- | --- | --- | --- |
-| **GITHUB_TOKENS** | 字符串（逗号分隔） | "" | 任意字符串 | 用于访问 GitHub API 的个人访问令牌列表，多个令牌用逗号分隔。这是必填项。 |
-| **PROXY** | 字符串（逗号分隔） | "" | 任意字符串 | 用于访问 GitHub API 的代理服务器列表，支持 `http://` 和 `socks5://` 格式，多个代理用逗号分隔。 |
+| **github.tokens** | 字符串列表 | [] | 任意字符串列表 | 用于访问 GitHub API 的个人访问令牌列表。支持多个令牌轮换以避免速率限制。这是必填项。 |
+| **github.api_url** | 字符串 | https://api.github.com/search/code | 有效的 URL | GitHub 搜索代码 API 的端点地址。 |
 
 ### 数据存储配置
-| 环境变量名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
+| 配置项名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
 | --- | --- | --- | --- | --- |
-| **DATA_PATH** | 字符串 | /app/data | 任意有效路径 | 应用程序用于存储数据文件（如日志、检查点）的根目录路径。 |
-
-### 文件路径与前缀配置
-| 环境变量名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
-| --- | --- | --- | --- | --- |
-| **VALID_KEY_PREFIX** | 字符串 | keys/keys_valid_ | 任意字符串 | 存储有效 API 密钥的文件路径前缀。 |
-| **RATE_LIMITED_KEY_PREFIX** | 字符串 | keys/key_429_ | 任意字符串 | 存储被限流 API 密钥的文件路径前缀。 |
-| **VALID_KEY_DETAIL_PREFIX** | 字符串 | logs/keys_valid_detail_ | 任意字符串 | 存储有效密钥详细信息（含 URL）的日志文件路径前缀。 |
-| **RATE_LIMITED_KEY_DETAIL_PREFIX** | 字符串 | logs/key_429_detail_ | 任意字符串 | 存储被限流密钥详细信息的日志文件路径前缀。 |
-| **QUERIES_FILE** | 字符串 | queries.txt | 任意文件名 | 包含 GitHub 搜索查询语句的文件名（相对于 `DATA_PATH`）。 |
-| **SCANNED_SHAS_FILE** | 字符串 | scanned_shas.txt | 任意文件名 | 用于记录已扫描文件 SHA 值的文件名（相对于 `DATA_PATH`）。 |
+| **data_path** | 字符串 | ./data | 任意有效路径 | 应用程序用于存储数据文件（如日志、检查点）的根目录路径。 |
 
 ### 搜索与过滤配置
-| 环境变量名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
+| 配置项名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
 | --- | --- | --- | --- | --- |
-| **DATE_RANGE_DAYS** | 整数 | 730 | 大于 0 的整数 | 用于过滤仓库的年龄范围（天），只搜索在此天数内有更新的仓库。 |
-| **FILE_PATH_BLACKLIST** | 字符串（逗号分隔） | readme,docs,doc/,.md,sample,tutorial | 任意字符串 | 文件路径黑名单，包含这些关键词的文件路径将被跳过。 |
-| **HAJIMI_CHECK_MODEL** | 字符串 | gemini-2.5-flash | 任意模型名称 | 用于验证 Google API 密钥的 Gemini 模型名称。 |
+| **scan.date_range_days** | 整数 | 730 | 大于 0 的整数 | 用于过滤仓库的年龄范围（天），只搜索在此天数内有更新的仓库。 |
+| **scan.file_path_blacklist** | 字符串列表 | [] | 任意字符串列表 | 文件路径黑名单，包含这些关键词的文件路径将被跳过。 |
+| **scan.queries_file** | 字符串 | queries.txt | 任意文件名 | 包含 GitHub 搜索查询语句的文件名（相对于 `data_path`）。 |
 
-### ModelScope 密钥提取配置
-| 环境变量名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
-| --- | --- | --- | --- | --- |
-| **TARGET_BASE_URLS** | 字符串（逗号分隔） | https://api-inference.modelscope.cn/v1/ | 有效的 URL | 目标 API 基础 URL 列表，用于识别包含 ModelScope 密钥的文件。 |
-| **MS_USE_LOOSE_PATTERN** | 字符串（布尔值） | false | true, false | 是否使用宽松的密钥模式（`ms-`后跟长字符串）进行匹配。 |
-| **MS_PROXIMITY_CHARS** | 整数 | 0 | 大于等于 0 的整数 | 当使用宽松模式时，密钥与 `TARGET_BASE_URLS` 在文本中的最大字符距离。 |
-| **MS_REQUIRE_KEY_CONTEXT** | 字符串（布尔值） | false | true, false | 是否要求密钥周围存在 "key", "token" 等上下文关键词。 |
-| **MODELSCOPE_EXTRACT_ONLY** | 字符串（布尔值） | true | true, false | 是否仅提取 ModelScope 密钥，不进行外部验证。 |
+### 提取器通用配置 (ExtractorConfig)
+所有密钥提取器共享以下配置结构，通过 `extractors` 字典进行配置。
 
-### OpenRouter 密钥提取配置
-| 环境变量名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
+| 配置项名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
 | --- | --- | --- | --- | --- |
-| **OPENROUTER_BASE_URLS** | 字符串（逗号分隔） | https://openrouter.ai/api/v1 | 有效的 URL | OpenRouter API 基础 URL 列表，用于识别包含 OpenRouter 密钥的文件。 |
-| **OPENROUTER_USE_LOOSE_PATTERN** | 字符串（布尔值） | false | true, false | 是否使用宽松模式匹配 OpenRouter 密钥。 |
-| **OPENROUTER_PROXIMITY_CHARS** | 整数 | 0 | 大于等于 0 的整数 | 密钥与 `OPENROUTER_BASE_URLS` 在文本中的最大字符距离。 |
-| **OPENROUTER_REQUIRE_KEY_CONTEXT** | 字符串（布尔值） | false | true, false | 是否要求密钥周围存在上下文关键词。 |
-| **OPENROUTER_EXTRACT_ONLY** | 字符串（布尔值） | true | true, false | 是否仅提取 OpenRouter 密钥，不进行外部验证。 |
+| **name** | 字符串 | N/A | 任意字符串 | 提取器的唯一标识名称（如 `gemini`, `modelscope`, `openrouter`）。 |
+| **enabled** | 布尔值 | true | true, false | 是否启用此提取器。 |
+| **patterns** | 字典 | {} | 键值对 | 用于匹配密钥的正则表达式模式字典。 |
+| **base_urls** | 字符串列表 | [] | 有效的 URL 列表 | 目标 API 的基础 URL 列表，用于上下文识别。 |
+| **use_loose_pattern** | 布尔值 | false | true, false | 是否使用宽松的密钥模式进行匹配。 |
+| **proximity_chars** | 整数 | 0 | 大于等于 0 的整数 | 密钥与 `base_urls` 在文本中的最大字符距离。 |
+| **require_key_context** | 布尔值 | false | true, false | 是否要求密钥周围存在 "key", "token" 等上下文关键词。 |
+| **extract_only** | 布尔值 | false | true, false | 是否仅提取密钥而不进行外部验证。 |
+
+### 验证器通用配置 (ValidatorConfig)
+所有密钥验证器共享以下配置结构，通过 `validators` 字典进行配置。
+
+| 配置项名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
+| --- | --- | --- | --- | --- |
+| **name** | 字符串 | N/A | 任意字符串 | 验证器的唯一标识名称（如 `gemini`, `modelscope`, `openrouter`）。 |
+| **enabled** | 布尔值 | true | true, false | 是否启用此验证器。 |
+| **api_endpoint** | 字符串（可选） | null | 有效的 URL | 验证 API 密钥的端点地址。 |
+| **model_name** | 字符串（可选） | null | 任意模型名称 | 用于验证的模型名称（如 `gemini-2.5-flash`）。 |
+| **timeout** | 浮点数 | 30.0 | 大于 0 的浮点数 | API 调用的超时时间（秒）。 |
+
+### 代理配置
+| 配置项名称 | 数据类型 | 默认值 | 取值范围 | 功能描述 |
+| --- | --- | --- | --- | --- |
+| **proxy_list** | 字符串列表 | [] | 有效的代理 URL 列表 | 用于访问外部 API 的代理服务器列表，支持 `http://` 和 `socks5://` 格式。 |
 
 ## 命令行参数
 
-`hajimi_king.py` 支持以下命令行选项，用于控制程序的运行模式。
+`main.py` 支持以下命令行选项，用于控制程序的运行模式和配置。
 
 **Section sources**
-- [hajimi_king.py](file://app/hajimi_king.py#L24-L30)
+- [main.py](file://src\main.py#L420-L445) - *命令行参数解析*
 
 ### --mode
-*   **语法**: `--mode {modelscope-only,compatible}`
+*   **语法**: `--mode {modelscope-only,openrouter-only,gemini-only,compatible}`
 *   **参数类型**: 字符串（枚举）
-*   **使用场景**: 控制密钥提取的模式。
-    *   `modelscope-only`: 仅提取符合 `ms-UUID` 模式的 ModelScope 密钥，不进行任何外部验证，并且不会回退到原有的 Google API 密钥提取逻辑。
-    *   `compatible`: 首先尝试提取 ModelScope 密钥，如果未找到，则回退到原有的 Google API 密钥提取和验证逻辑。
-*   **依赖关系**: 此参数会覆盖环境变量 `MODELSCOPE_EXTRACT_ONLY` 的值，但仅在当前进程运行期间有效。
+*   **使用场景**: 控制密钥扫描的核心模式。
+    *   `modelscope-only`: 仅激活 ModelScope 相关的提取器和验证器，使用 `config/queries/modelscope.txt` 作为查询文件。
+    *   `openrouter-only`: 仅激活 OpenRouter 相关的提取器和验证器，使用 `config/queries/openrouter.txt` 作为查询文件。
+    *   `gemini-only`: 仅激活 Gemini 相关的提取器和验证器，使用 `config/queries/gemini.txt` 作为查询文件。
+    *   `compatible`: 激活所有类型的提取器和验证器，提供向后兼容的完整扫描能力。
+*   **依赖关系**: 此参数会覆盖配置文件中 `extractors` 和 `validators` 的 `enabled` 设置，并自动切换 `queries_file`。
+
+### --config-preset
+*   **语法**: `--config-preset <preset_name>`
+*   **参数类型**: 字符串
+*   **使用场景**: 从 `config/presets/` 目录加载预设的配置文件（如 `.env` 文件），用于快速切换不同的扫描环境。
+*   **依赖关系**: 指定的预设文件必须存在于 `config/presets/` 目录下。
+
+### --queries
+*   **语法**: `--queries <file_path>`
+*   **参数类型**: 字符串（文件路径）
+*   **使用场景**: 覆盖配置中的 `queries_file`，指定一个自定义的查询文件路径。
+*   **依赖关系**: 此参数优先级高于 `--mode` 参数对查询文件的设置。
 
 ## 参数组合使用示例
 
-以下示例展示了如何组合使用环境变量和命令行参数。
+以下示例展示了如何组合使用配置和命令行参数。
 
 ### 示例 1：启用调试模式
-通过设置 `DEBUG` 环境变量（虽然代码中未直接使用，但可通过日志级别控制）和 `MODELSCOPE_EXTRACT_ONLY=false` 来启用更详细的日志输出和完整的验证流程。
+虽然没有直接的 `DEBUG` 环境变量，但可以通过日志级别和启用所有验证来实现详细输出。
 ```bash
-export MODELSCOPE_EXTRACT_ONLY=false
-python app/hajimi_king.py --mode compatible
+# 通过环境变量或预设文件启用所有提取器和验证器
+python src/main.py --mode compatible
 ```
 
 ### 示例 2：指定自定义配置路径
-通过设置 `DATA_PATH` 环境变量来指定数据文件的存储位置。
+通过设置 `data_path` 并使用 `--queries` 参数来完全控制数据和查询。
 ```bash
-export DATA_PATH=/custom/data/path
-export QUERIES_FILE=my_queries.txt
-python app/hajimi_king.py
+export data_path=/custom/data/path
+python src/main.py --queries /custom/data/path/my_queries.txt
 ```
 
-### 示例 3：仅提取 ModelScope 密钥
-使用 `--mode modelscope-only` 参数来仅提取 ModelScope 密钥，忽略所有其他密钥。
+### 示例 3：仅提取并验证 OpenRouter 密钥
+使用 `--mode openrouter-only` 参数来专注于 OpenRouter 密钥的发现和验证。
 ```bash
-python app/hajimi_king.py --mode modelscope-only
+python src/main.py --mode openrouter-only
+```
+
+### 示例 4：使用预设配置
+加载名为 `production` 的预设配置，该配置可能包含生产环境的代理和令牌。
+```bash
+python src/main.py --config-preset production --mode compatible
 ```
 
 ## 内部函数接口
@@ -121,50 +141,35 @@ python app/hajimi_king.py --mode modelscope-only
 本节提供关键内部函数的简要说明，为自动化脚本编写者和系统集成者提供技术参考。
 
 **Section sources**
-- [github_client.py](file://utils/github_client.py#L30-L150)
-- [Logger.py](file://common/Logger.py#L10-L180) - *新增日志方法*
+- [main.py](file://src\main.py#L50-L415) - *主应用逻辑*
+- [core/__init__.py](file://src\core\__init__.py#L10-L15) - *扫描模式定义*
 
-### github_client.GitHubClient.search_for_keys()
-*   **方法签名**: `search_for_keys(self, query: str, max_retries: int = 5) -> Dict[str, Any]`
-*   **功能描述**: 使用配置的 GitHub 令牌在 GitHub 代码中执行搜索查询。它会自动轮换令牌以避免速率限制，并处理分页，最多返回 1000 个结果。
-*   **返回结构**: 一个字典，包含 `total_count` (总结果数), `incomplete_results` (布尔值，表示结果是否不完整), 和 `items` (包含搜索结果的列表)。
-
-### github_client.GitHubClient.get_file_content()
-*   **方法签名**: `get_file_content(self, item: Dict[str, Any]) -> Optional[str]`
-*   **功能描述**: 根据 GitHub 搜索结果项获取文件的完整内容。它会处理 base64 编码的内容，并在必要时通过 `download_url` 获取。
-*   **返回结构**: 成功时返回文件内容的字符串，失败时返回 `None`。
-
-### common.Logger.Logger.success()
-*   **方法签名**: `success(self, message: str, *args, **kwargs)`
-*   **功能描述**: 记录成功消息，使用特殊图标 ✅ 和 INFO 级别，用于标识操作成功。
+### Application._apply_scan_mode_config()
+*   **方法签名**: `_apply_scan_mode_config(self) -> None`
+*   **功能描述**: 根据 `self.scan_mode` 的值，动态修改 `self.config` 中提取器和验证器的启用状态，并切换查询文件。这是实现模式切换的核心逻辑。
 *   **返回结构**: 无
 
-### common.Logger.Logger.progress()
-*   **方法签名**: `progress(self, message: str, current: int, total: int, *args, **kwargs)`
-*   **功能描述**: 记录进度信息，显示进度条、百分比和当前/总数，用于长时间运行任务的可视化进度。
-*   **返回结构**: 无
+### Application._create_extractors()
+*   **方法签名**: `_create_extractors(self) -> List[KeyExtractor]`
+*   **功能描述**: 遍历 `self.config` 中所有启用的提取器配置，根据其 `name` 创建相应的提取器实例（如 `GeminiExtractor`, `ModelScopeExtractor`）。
+*   **返回结构**: 一个 `KeyExtractor` 实例列表。
 
-### common.Logger.Logger.network()
-*   **方法签名**: `network(self, message: str, *args, **kwargs)`
-*   **功能描述**: 记录网络相关操作，使用 🌐 图标，用于标识网络请求或连接事件。
-*   **返回结构**: 无
+### Application._create_validators()
+*   **方法签名**: `_create_validators(self) -> List[KeyValidator]`
+*   **功能描述**: 遍历 `self.config` 中所有启用的验证器配置，根据其 `name` 创建相应的验证器实例（如 `GeminiValidator`, `OpenRouterValidator`）。
+*   **返回结构**: 一个 `KeyValidator` 实例列表。
 
-### common.Logger.Logger.file_op()
-*   **方法签名**: `file_op(self, message: str, *args, **kwargs)`
-*   **功能描述**: 记录文件操作，使用 📁 图标，用于标识文件读写、创建或删除等操作。
-*   **返回结构**: 无
+### ScanMode 枚举
+*   **类型**: `Enum`
+*   **功能描述**: 定义了应用程序支持的四种扫描模式，确保模式参数的类型安全。
+*   **取值范围**: `COMPATIBLE`, `MODELSCOPE_ONLY`, `OPENROUTER_ONLY`, `GEMINI_ONLY`
 
-### common.Logger.Logger.security()
-*   **方法签名**: `security(self, message: str, *args, **kwargs)`
-*   **功能描述**: 记录安全相关事件，使用 🔒 图标和 WARNING 级别，用于标识潜在的安全风险或敏感操作。
-*   **返回结构**: 无
+### AppConfig.get_enabled_extractors()
+*   **方法签名**: `get_enabled_extractors(self) -> Dict[str, ExtractorConfig]`
+*   **功能描述**: 从 `self.extractors` 字典中筛选出所有 `enabled=True` 的配置项。
+*   **返回结构**: 一个包含启用的提取器配置的字典。
 
-### common.Logger.Logger.rate_limit()
-*   **方法签名**: `rate_limit(self, message: str, *args, **kwargs)`
-*   **功能描述**: 记录频率限制事件，使用 ⏱️ 图标和 WARNING 级别，用于标识 API 调用被限流的情况。
-*   **返回结构**: 无
-
-### common.Logger.Logger.separator()
-*   **方法签名**: `separator(self, title: str = "", char: str = "=", width: int = 60)`
-*   **功能描述**: 打印分隔线，可带标题，用于在日志中划分不同逻辑块，提高可读性。
-*   **返回结构**: 无
+### AppConfig.get_enabled_validators()
+*   **方法签名**: `get_enabled_validators(self) -> Dict[str, ValidatorConfig]`
+*   **功能描述**: 从 `self.validators` 字典中筛选出所有 `enabled=True` 的配置项。
+*   **返回结构**: 一个包含启用的验证器配置的字典。

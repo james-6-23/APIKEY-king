@@ -14,6 +14,7 @@ class ScanMode(Enum):
     MODELSCOPE_ONLY = "modelscope-only"
     OPENROUTER_ONLY = "openrouter-only"
     GEMINI_ONLY = "gemini-only"
+    SILICONFLOW_ONLY = "siliconflow-only"
 
 
 @dataclass

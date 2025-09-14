@@ -131,11 +131,31 @@ class Application:
             # Use Gemini queries
             self.config.scan.queries_file = "config/queries/gemini.txt"
             logger.mode_activated("Gemini", True)
-            
+
+        elif self.scan_mode == ScanMode.SILICONFLOW_ONLY:
+            # Enable only SiliconFlow extractor
+            for name, extractor_config in self.config.extractors.items():
+                if name == 'siliconflow':
+                    extractor_config.enabled = True
+                    extractor_config.extract_only = False  # Enable validation
+                else:
+                    extractor_config.enabled = False
+
+            # Enable only SiliconFlow validator
+            for name, validator_config in self.config.validators.items():
+                if name == 'siliconflow':
+                    validator_config.enabled = True
+                else:
+                    validator_config.enabled = False
+
+            # Use SiliconFlow queries
+            self.config.scan.queries_file = "config/queries/siliconflow.txt"
+            logger.mode_activated("SiliconFlow", True)
+
         elif self.scan_mode == ScanMode.COMPATIBLE:
             # Enable all extractors with validation where supported
             for name, extractor_config in self.config.extractors.items():
-                if name in ['gemini', 'openrouter', 'modelscope']:
+                if name in ['gemini', 'openrouter', 'modelscope', 'siliconflow']:
                     extractor_config.extract_only = False  # Enable validation for all
             
             # Enable all validators
@@ -158,6 +178,9 @@ class Application:
                     extractor = ModelScopeExtractor(config)
                 elif name == 'openrouter':
                     extractor = OpenRouterExtractor(config)
+                elif name == 'siliconflow':
+                    from .extractors.siliconflow import SiliconFlowExtractor
+                    extractor = SiliconFlowExtractor(config)
                 else:
                     logger.warning(f"Unknown extractor type: {name}")
                     continue
@@ -188,6 +211,11 @@ class Application:
                     logger.init_success(f"{name} 验证器 validator")
                 elif name == 'modelscope':
                     validator = ModelScopeValidator(config)
+                    validators.append(validator)
+                    logger.init_success(f"{name} 验证器 validator")
+                elif name == 'siliconflow':
+                    from .validators.siliconflow import SiliconFlowValidator
+                    validator = SiliconFlowValidator(config)
                     validators.append(validator)
                     logger.init_success(f"{name} 验证器 validator")
                 else:
@@ -403,9 +431,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="APIKEY-king - API Key Discovery Tool")
     parser.add_argument(
         "--mode",
-        choices=["modelscope-only", "openrouter-only", "gemini-only", "compatible"],
+        choices=["modelscope-only", "openrouter-only", "gemini-only", "siliconflow-only", "compatible"],
         default="compatible",
-        help="Scanning mode: modelscope-only, openrouter-only, gemini-only, or compatible (all types)"
+        help="Scanning mode: modelscope-only, openrouter-only, gemini-only, siliconflow-only, or compatible (all types)"
     )
     parser.add_argument(
         "--config-preset",

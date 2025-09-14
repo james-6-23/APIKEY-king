@@ -7,16 +7,17 @@
 ## 🚀 核心功能概览
 
 ### 1. 🔍 多平台密钥发现
-支持三大主流 AI 平台的 API 密钥发现：
+支持四大主流 AI 平台的 API 密钥发现：
 
 | 平台 | 密钥格式 | 正则模式 | 提取状态 |
 |------|----------|----------|----------|
 | **Google Gemini** | `AIzaSy...` | `AIzaSy[A-Za-z0-9\-_]{33}` | ✅ 完整支持 |
 | **OpenRouter** | `sk-or-v1-...` | `sk-or-v1-[0-9a-f]{64}` | ✅ 完整支持 |
 | **ModelScope** | `ms-UUID...` | `ms-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}` | ✅ 完整支持 |
+| **SiliconFlow** | `sk-...` | `sk-[a-z]{40,64}` | ✅ 完整支持 |
 
 ### 2. ✅ 实时密钥验证
-**业界首个**支持三种密钥类型完整验证的系统：
+**业界首个**支持四种密钥类型完整验证的系统：
 
 #### Gemini 验证 (`src/validators/gemini.py`)
 - 通过 Google GenerativeAI SDK 验证
@@ -36,6 +37,12 @@
 - 低成本验证
 - 全面错误处理：unauthorized, forbidden, rate_limited, model_issue
 
+#### SiliconFlow 验证 (`src/validators/siliconflow.py`)
+- 通过 SiliconFlow Chat Completions API
+- 使用高效模型（如 `Qwen/Qwen2.5-72B-Instruct`）
+- 低成本验证策略（1 max_tokens）
+- 智能错误分类：valid, unauthorized, rate_limited, forbidden, model_issue
+
 ### 3. 🎛️ 灵活模式系统
 支持多种扫描模式，满足不同使用场景：
 
@@ -45,8 +52,9 @@ python -m src.main --mode compatible
 
 # 专项模式
 python -m src.main --mode gemini-only      # 仅 Gemini + 验证
-python -m src.main --mode openrouter-only  # 仅 OpenRouter + 验证  
+python -m src.main --mode openrouter-only  # 仅 OpenRouter + 验证
 python -m src.main --mode modelscope-only  # 仅 ModelScope + 验证
+python -m src.main --mode siliconflow-only # 仅 SiliconFlow + 验证
 ```
 
 ### 4. 🚀 快捷启动系统
