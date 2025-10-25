@@ -16,6 +16,7 @@ from .routers import (
     memory_router,
     settings_router,
     queries_router,
+    reports_router,
 )
 from .websocket import websocket_logs_router
 
@@ -56,6 +57,7 @@ app.include_router(logs_router)
 app.include_router(memory_router)
 app.include_router(settings_router)
 app.include_router(queries_router)
+app.include_router(reports_router)
 
 # Include WebSocket router
 app.include_router(websocket_logs_router)

@@ -473,6 +473,95 @@ class Database:
         
         conn.commit()
         conn.close()
+    
+    def save_scan_report(self, report: Dict) -> int:
+        """保存扫描报告."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO scan_stats (scan_mode, total_files, total_keys, valid_keys, started_at, ended_at, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            report.get("scan_mode"),
+            report.get("total_files", 0),
+            report.get("total_keys", 0),
+            report.get("valid_keys", 0),
+            report.get("start_time"),
+            report.get("end_time"),
+            "running"
+        ))
+        
+        report_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return report_id
+    
+    def update_scan_report(self, report_id: int, data: Dict):
+        """更新扫描报告."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE scan_stats 
+            SET total_files = ?, total_keys = ?, valid_keys = ?, ended_at = ?, status = 'completed'
+            WHERE id = ?
+        """, (
+            data.get("total_files", 0),
+            data.get("total_keys", 0),
+            data.get("valid_keys", 0),
+            data.get("end_time"),
+            report_id
+        ))
+        
+        conn.commit()
+        conn.close()
+    
+    def get_scan_reports(self, limit: int = 20) -> List[Dict]:
+        """获取扫描报告列表."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM scan_stats 
+            ORDER BY started_at DESC 
+            LIMIT ?
+        """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    def get_scan_report(self, report_id: int) -> Optional[Dict]:
+        """获取单个扫描报告."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM scan_stats WHERE id = ?", (report_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return dict(row) if row else None
+    
+    def delete_scan_report(self, report_id: int):
+        """删除扫描报告."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM scan_stats WHERE id = ?", (report_id,))
+        conn.commit()
+        conn.close()
+    
+    def clear_scan_reports(self):
+        """清除所有扫描报告."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM scan_stats")
+        conn.commit()
+        conn.close()
 
 
 # 全局数据库实例

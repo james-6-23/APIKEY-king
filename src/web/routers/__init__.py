@@ -10,6 +10,7 @@ from .logs import router as logs_router
 from .memory import router as memory_router
 from .settings import router as settings_router
 from .queries import router as queries_router
+from .reports import router as reports_router
 
 __all__ = [
     "auth_router",
@@ -20,6 +21,7 @@ __all__ = [
     "memory_router",
     "settings_router",
     "queries_router",
+    "reports_router",
 ]
 
 

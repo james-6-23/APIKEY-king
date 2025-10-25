@@ -37,6 +37,8 @@ class ScanService:
         self._scanner_thread = None
         self._stop_flag = False
         self._current_scan_mode = None  # 当前扫描使用的模式
+        self._current_report_id = None  # 当前扫描报告ID
+        self._scan_start_time = None  # 扫描开始时间
         self._stats = {
             "total_files": 0,
             "total_keys": 0,
@@ -64,6 +66,24 @@ class ScanService:
         self._stop_flag = False
         self._running = True
         self._current_scan_mode = config.get("scan_mode", "compatible")  # 记录当前扫描模式
+        self._scan_start_time = datetime.now().isoformat()
+        
+        # 重置统计
+        self._stats = {
+            "total_files": 0,
+            "total_keys": 0,
+            "valid_keys": 0,
+            "last_update": None,
+            "current_query": "",
+            "current_query_index": 0,
+            "total_queries": 0,
+            "progress_percent": 0
+        }
+        
+        # 创建扫描报告
+        from ..services.report_service import ReportService
+        report_svc = ReportService()
+        self._current_report_id = report_svc.create_report(self._stats, self._current_scan_mode)
         
         from ..core.scanner_runner import ScannerRunner
         runner = ScannerRunner(config, self._stats, log_svc, self)
@@ -130,6 +150,18 @@ class ScanService:
         """Set running status (called by runner)."""
         self._running = running
         if not running:
+            # 更新扫描报告
+            if self._current_report_id:
+                from ..services.report_service import ReportService
+                from datetime import datetime
+                report_svc = ReportService()
+                report_svc.update_report(
+                    self._current_report_id,
+                    self._stats,
+                    end_time=datetime.now().isoformat()
+                )
+                self._current_report_id = None
+            
             self._current_scan_mode = None  # 清除扫描模式
     
     def is_paused(self) -> bool:

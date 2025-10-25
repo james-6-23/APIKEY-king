@@ -575,7 +575,12 @@ function clearLogs() {
 }
 
 // Keys Management
-async function loadKeys(keyType = null, search = null) {
+let currentPage = 1;
+let currentKeyType = '';
+let currentSearch = '';
+const keysPerPage = 50;
+
+async function loadKeys(keyType = null, search = null, page = 1) {
     try {
         let url = `${API_BASE}/api/keys`;
         const params = new URLSearchParams();
@@ -590,6 +595,9 @@ async function loadKeys(keyType = null, search = null) {
         if (response.ok) {
             const data = await response.json();
             allKeysCache = data.keys;
+            currentPage = page;
+            currentKeyType = keyType || '';
+            currentSearch = search || '';
             displayKeys(data.keys);
         }
     } catch (error) {
@@ -622,7 +630,8 @@ const handleKeySearch = window.perfUtils.debounce(function() {
 }, 300);
 
 async function refreshKeys() {
-    await loadKeys();
+    // 保持当前的过滤条件刷新
+    await loadKeys(currentKeyType || null, currentSearch || null, currentPage);
     showToast('已刷新', 'success');
 }
 
@@ -631,16 +640,20 @@ function displayKeys(keys) {
     
     if (keys.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">暂无数据</td></tr>';
+        updatePagination(0, 0);
         return;
     }
 
+    // 计算分页
+    const totalPages = Math.ceil(keys.length / keysPerPage);
+    const startIdx = (currentPage - 1) * keysPerPage;
+    const endIdx = startIdx + keysPerPage;
+    const pageKeys = keys.slice(startIdx, endIdx);
+    
     // 使用 DocumentFragment 提升性能
     const fragment = document.createDocumentFragment();
     
-    // 只显示前200条，避免DOM过多
-    const displayKeys = keys.slice(0, 200);
-    
-    displayKeys.forEach((key, index) => {
+    pageKeys.forEach((key, index) => {
         const tr = document.createElement('tr');
         tr.className = index % 2 === 0 ? 'bg-white hover:bg-slate-100' : 'bg-slate-50/50 hover:bg-slate-100';
         
@@ -670,12 +683,57 @@ function displayKeys(keys) {
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
     
-    // 显示提示（如果有更多密钥）
-    if (keys.length > 200) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="5" class="px-3 py-2 text-center text-amber-600 text-xs">只显示前200条，请使用搜索和筛选功能查看更多</td>`;
-        tbody.appendChild(tr);
+    // 更新分页控件
+    updatePagination(keys.length, totalPages);
+}
+
+function updatePagination(totalKeys, totalPages) {
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (!paginationContainer) return;
+    
+    if (totalKeys === 0 || totalPages <= 1) {
+        paginationContainer.classList.add('hidden');
+        return;
     }
+    
+    paginationContainer.classList.remove('hidden');
+    
+    const startIdx = (currentPage - 1) * keysPerPage + 1;
+    const endIdx = Math.min(currentPage * keysPerPage, totalKeys);
+    
+    paginationContainer.innerHTML = `
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+                显示 ${startIdx}-${endIdx} / 共 ${totalKeys} 条
+            </div>
+            <div class="flex gap-2">
+                <button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}
+                    class="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    首页
+                </button>
+                <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}
+                    class="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    上一页
+                </button>
+                <span class="px-3 py-1 text-sm text-slate-700">
+                    ${currentPage} / ${totalPages}
+                </span>
+                <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}
+                    class="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    下一页
+                </button>
+                <button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}
+                    class="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    末页
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function goToPage(page) {
+    currentPage = page;
+    handleKeySearch();
 }
 
 function getKeyTypeBadge(type) {
@@ -739,35 +797,52 @@ async function exportKeys() {
 }
 
 async function exportKeysTxt() {
-    try {
-        const response = await fetch(`${API_BASE}/api/keys`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-
-        if (!response.ok) throw new Error('导出失败');
-
-        const data = await response.json();
-        const keys = data.keys;
-
-        if (keys.length === 0) {
-            showToast('没有可导出的数据', 'error');
-            return;
-        }
-
-        // Create TXT - one key per line
-        const txt = keys.map(k => k.key).join('\n');
-
-        // Download
-        const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `apikeys_${new Date().toISOString().split('T')[0]}.txt`;
-        link.click();
-
-        showToast('TXT 已导出', 'success');
-    } catch (error) {
-        showToast(error.message, 'error');
+    // 导出当前过滤后的密钥
+    const keysToExport = getFilteredKeys();
+    
+    if (keysToExport.length === 0) {
+        showToast('没有可导出的数据', 'error');
+        return;
     }
+
+    // Create TXT - one key per line
+    const txt = keysToExport.map(k => k.key).join('\n');
+
+    // Download
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    
+    // 文件名包含类型信息
+    const typeText = currentKeyType ? `_${currentKeyType}` : '';
+    link.download = `apikeys${typeText}_${new Date().toISOString().split('T')[0]}.txt`;
+    link.click();
+
+    const typeDesc = currentKeyType ? `(${currentKeyType.toUpperCase()})` : '';
+    showToast(`TXT 已导出 ${typeDesc}`, 'success');
+}
+
+function getFilteredKeys() {
+    const search = document.getElementById('keySearch').value.trim();
+    const keyType = document.getElementById('keyTypeFilter').value;
+    
+    let filteredKeys = allKeysCache;
+    
+    // Filter by type
+    if (keyType) {
+        filteredKeys = filteredKeys.filter(key => key.type.toLowerCase() === keyType);
+    }
+    
+    // Filter by search
+    if (search) {
+        const searchLower = search.toLowerCase();
+        filteredKeys = filteredKeys.filter(key => 
+            key.key.toLowerCase().includes(searchLower) ||
+            key.source.toLowerCase().includes(searchLower)
+        );
+    }
+    
+    return filteredKeys;
 }
 
 // Utility Functions
@@ -992,6 +1067,166 @@ async function loadConfigToModal() {
         }
     } catch (error) {
         console.error('Failed to load config to modal:', error);
+    }
+}
+
+// Reports Management
+async function showReportsDialog() {
+    const modal = document.getElementById('reportsModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        await loadReports();
+    }
+}
+
+function hideReportsDialog() {
+    const modal = document.getElementById('reportsModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+async function loadReports() {
+    try {
+        const response = await fetch(`${API_BASE}/api/reports`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) throw new Error('加载失败');
+
+        const data = await response.json();
+        displayReports(data.reports);
+    } catch (error) {
+        console.error('Failed to load reports:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+function displayReports(reports) {
+    const container = document.getElementById('reportsContent');
+    
+    if (reports.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-slate-500 py-12">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p class="text-lg">暂无扫描报告</p>
+                <p class="text-sm mt-2">完成扫描后会自动生成报告</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 创建报告卡片网格
+    const grid = document.createElement('div');
+    grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+    
+    reports.forEach(report => {
+        const card = createReportCard(report);
+        grid.appendChild(card);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(grid);
+}
+
+function createReportCard(report) {
+    const card = document.createElement('div');
+    card.className = 'bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow';
+    
+    const modeNames = {
+        'compatible': '全部平台',
+        'gemini-only': 'Gemini',
+        'openrouter-only': 'OpenRouter',
+        'modelscope-only': 'ModelScope',
+        'siliconflow-only': 'SiliconFlow'
+    };
+    
+    const modeName = modeNames[report.scan_mode] || report.scan_mode;
+    const modeColors = {
+        'compatible': 'bg-slate-100 text-slate-800',
+        'gemini-only': 'bg-purple-100 text-purple-800',
+        'openrouter-only': 'bg-blue-100 text-blue-800',
+        'modelscope-only': 'bg-green-100 text-green-800',
+        'siliconflow-only': 'bg-amber-100 text-amber-800'
+    };
+    const modeColor = modeColors[report.scan_mode] || 'bg-slate-100 text-slate-800';
+    
+    const startTime = new Date(report.started_at).toLocaleString('zh-CN');
+    const endTime = report.ended_at ? new Date(report.ended_at).toLocaleString('zh-CN') : '进行中';
+    
+    // 计算成功率
+    const successRate = report.total_keys > 0 
+        ? ((report.valid_keys / report.total_keys) * 100).toFixed(1) 
+        : 0;
+    
+    card.innerHTML = `
+        <div class="flex items-start justify-between mb-3">
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded ${modeColor}">
+                        ${modeName}
+                    </span>
+                    <span class="text-xs px-2 py-1 rounded ${report.status === 'completed' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}">
+                        ${report.status === 'completed' ? '已完成' : '运行中'}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500">${startTime}</p>
+            </div>
+            <button onclick="deleteReport(${report.id})" class="text-slate-400 hover:text-red-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-600">${report.total_files || 0}</div>
+                <div class="text-xs text-slate-600">扫描文件</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-purple-600">${report.total_keys || 0}</div>
+                <div class="text-xs text-slate-600">发现密钥</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-green-600">${report.valid_keys || 0}</div>
+                <div class="text-xs text-slate-600">有效密钥</div>
+            </div>
+        </div>
+        
+        <div class="pt-3 border-t border-slate-100">
+            <div class="flex justify-between text-xs text-slate-600">
+                <span>成功率</span>
+                <span class="font-semibold ${successRate > 50 ? 'text-green-600' : 'text-amber-600'}">${successRate}%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                <div class="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all" style="width: ${successRate}%"></div>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+async function deleteReport(reportId) {
+    if (!confirm('确定要删除这个报告吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/reports/${reportId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) throw new Error('删除失败');
+
+        showToast('报告已删除', 'success');
+        loadReports();  // 刷新列表
+    } catch (error) {
+        showToast(error.message, 'error');
     }
 }
 
