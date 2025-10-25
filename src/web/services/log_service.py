@@ -1,5 +1,5 @@
 """
-Log service.
+Log service - Singleton pattern to ensure all components use the same instance.
 """
 
 from datetime import datetime
@@ -8,9 +8,21 @@ import asyncio
 
 
 class LogService:
-    """Log management service."""
+    """Log management service - Singleton."""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
     
     def __init__(self):
+        # Only initialize once
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        self._initialized = True
         self._logs = []
         self._websocket_connections = []
     
