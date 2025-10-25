@@ -89,39 +89,43 @@ function showDashboard() {
 async function handleSaveConfig(event) {
     event.preventDefault();
     
-    const tokensText = document.getElementById('githubTokens').value;
+    // 检查是否在模态框中（通过检查ID后缀）
+    const isModal = event.target.id === 'configFormModal';
+    const suffix = isModal ? 'Modal' : '';
+    
+    const tokensText = document.getElementById('githubTokens' + suffix).value;
     const tokens = tokensText.split('\n').map(t => t.trim()).filter(t => t);
-    const proxy = document.getElementById('proxy').value.trim();
-    const scanMode = document.querySelector('input[name="scanMode"]:checked').value;
-    const dateRange = parseInt(document.getElementById('dateRange').value);
+    const proxy = document.getElementById('proxy' + suffix).value.trim();
+    const scanMode = document.querySelector(`input[name="scanMode${suffix}"]:checked`).value;
+    const dateRange = parseInt(document.getElementById('dateRange' + suffix).value);
 
     // 渠道验证配置
     const validators = {
         gemini: {
-            enabled: document.getElementById('geminiEnabled').checked,
-            model: document.getElementById('geminiModel').value.trim()
+            enabled: document.getElementById('geminiEnabled' + suffix).checked,
+            model: document.getElementById('geminiModel' + suffix).value.trim()
         },
         openrouter: {
-            enabled: document.getElementById('openrouterEnabled').checked,
-            model: document.getElementById('openrouterModel').value.trim()
+            enabled: document.getElementById('openrouterEnabled' + suffix).checked,
+            model: document.getElementById('openrouterModel' + suffix).value.trim()
         },
         modelscope: {
-            enabled: document.getElementById('modelscopeEnabled').checked,
-            model: document.getElementById('modelscopeModel').value.trim()
+            enabled: document.getElementById('modelscopeEnabled' + suffix).checked,
+            model: document.getElementById('modelscopeModel' + suffix).value.trim()
         },
         siliconflow: {
-            enabled: document.getElementById('siliconflowEnabled').checked,
-            model: document.getElementById('siliconflowModel').value.trim()
+            enabled: document.getElementById('siliconflowEnabled' + suffix).checked,
+            model: document.getElementById('siliconflowModel' + suffix).value.trim()
         }
     };
 
     // 性能配置
     const performance = {
-        max_concurrent_files: parseInt(document.getElementById('maxConcurrent').value),
-        request_delay: parseFloat(document.getElementById('requestDelay').value),
-        github_timeout: parseInt(document.getElementById('githubTimeout').value),
-        validation_timeout: parseInt(document.getElementById('validationTimeout').value),
-        max_retries: parseInt(document.getElementById('maxRetries').value)
+        max_concurrent_files: parseInt(document.getElementById('maxConcurrent' + suffix).value),
+        request_delay: parseFloat(document.getElementById('requestDelay' + suffix).value),
+        github_timeout: parseInt(document.getElementById('githubTimeout' + suffix).value),
+        validation_timeout: parseInt(document.getElementById('validationTimeout' + suffix).value),
+        max_retries: parseInt(document.getElementById('maxRetries' + suffix).value)
     };
 
     try {
@@ -144,6 +148,11 @@ async function handleSaveConfig(event) {
         if (!response.ok) throw new Error('配置保存失败');
 
         showToast('配置保存成功', 'success');
+        
+        // 如果在模态框中，关闭模态框
+        if (isModal) {
+            hideConfigDialog();
+        }
     } catch (error) {
         showToast(error.message, 'error');
     }
@@ -854,19 +863,129 @@ async function loadQueryStats() {
 
 // Config Dialog
 function showConfigDialog() {
-    // 显示配置卡片
+    // 将配置表单移到模态框中
     const configCard = document.getElementById('configCardOld');
-    if (configCard) {
-        configCard.classList.remove('hidden');
-        // 平滑滚动到配置区域
-        configCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const modalContent = document.getElementById('configModalContent');
+    const modal = document.getElementById('configModal');
+    
+    if (configCard && modalContent && modal) {
+        // 只在第一次时移动内容
+        if (modalContent.children.length === 0) {
+            // 克隆配置表单内容（不包括标题和关闭按钮）
+            const formContent = configCard.querySelector('form');
+            if (formContent) {
+                const clonedForm = formContent.cloneNode(true);
+                // 保持表单的提交处理
+                clonedForm.id = 'configFormModal';
+                clonedForm.onsubmit = handleSaveConfig;
+                modalContent.appendChild(clonedForm);
+                
+                // 同步ID以避免冲突，并更新name属性
+                modalContent.querySelectorAll('[id]').forEach(el => {
+                    if (el.id !== 'configFormModal') {
+                        el.id = el.id + 'Modal';
+                    }
+                });
+                
+                // 更新radio按钮的name属性
+                modalContent.querySelectorAll('input[type="radio"]').forEach(el => {
+                    if (el.name && !el.name.endsWith('Modal')) {
+                        el.name = el.name + 'Modal';
+                    }
+                });
+            }
+        }
+        
+        // 显示模态框
+        modal.classList.remove('hidden');
+        // 加载最新配置
+        loadConfigToModal();
     }
 }
 
 function hideConfigDialog() {
-    const configCard = document.getElementById('configCardOld');
-    if (configCard) {
-        configCard.classList.add('hidden');
+    const modal = document.getElementById('configModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// 加载配置到模态框
+async function loadConfigToModal() {
+    try {
+        const response = await fetch(`${API_BASE}/api/config`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.config) {
+                // 加载 GitHub Tokens (明文显示)
+                const tokensInput = document.getElementById('githubTokensModal');
+                if (tokensInput && data.config.github_tokens && data.config.github_tokens.length > 0) {
+                    tokensInput.value = data.config.github_tokens.join('\n');
+                }
+                
+                // 加载其他配置
+                const proxyInput = document.getElementById('proxyModal');
+                if (proxyInput) proxyInput.value = data.config.proxy || '';
+                
+                const dateRangeInput = document.getElementById('dateRangeModal');
+                if (dateRangeInput) dateRangeInput.value = data.config.date_range_days || 730;
+                
+                const scanMode = data.config.scan_mode || 'compatible';
+                const scanModeInput = document.querySelector(`input[name="scanModeModal"][value="${scanMode}"]`);
+                if (scanModeInput) scanModeInput.checked = true;
+                
+                // 加载验证器配置
+                if (data.config.validators) {
+                    const validators = data.config.validators;
+                    
+                    if (validators.gemini) {
+                        const geminiEnabled = document.getElementById('geminiEnabledModal');
+                        const geminiModel = document.getElementById('geminiModelModal');
+                        if (geminiEnabled) geminiEnabled.checked = validators.gemini.enabled;
+                        if (geminiModel) geminiModel.value = validators.gemini.model || 'gemini-2.0-flash-exp';
+                    }
+                    if (validators.openrouter) {
+                        const openrouterEnabled = document.getElementById('openrouterEnabledModal');
+                        const openrouterModel = document.getElementById('openrouterModelModal');
+                        if (openrouterEnabled) openrouterEnabled.checked = validators.openrouter.enabled;
+                        if (openrouterModel) openrouterModel.value = validators.openrouter.model || 'deepseek/deepseek-chat-v3:free';
+                    }
+                    if (validators.modelscope) {
+                        const modelscopeEnabled = document.getElementById('modelscopeEnabledModal');
+                        const modelscopeModel = document.getElementById('modelscopeModelModal');
+                        if (modelscopeEnabled) modelscopeEnabled.checked = validators.modelscope.enabled;
+                        if (modelscopeModel) modelscopeModel.value = validators.modelscope.model || 'Qwen/Qwen2-1.5B-Instruct';
+                    }
+                    if (validators.siliconflow) {
+                        const siliconflowEnabled = document.getElementById('siliconflowEnabledModal');
+                        const siliconflowModel = document.getElementById('siliconflowModelModal');
+                        if (siliconflowEnabled) siliconflowEnabled.checked = validators.siliconflow.enabled;
+                        if (siliconflowModel) siliconflowModel.value = validators.siliconflow.model || 'Qwen/Qwen2.5-7B-Instruct';
+                    }
+                }
+
+                // 加载性能配置
+                if (data.config.performance) {
+                    const perf = data.config.performance;
+                    const maxConcurrent = document.getElementById('maxConcurrentModal');
+                    const requestDelay = document.getElementById('requestDelayModal');
+                    const githubTimeout = document.getElementById('githubTimeoutModal');
+                    const validationTimeout = document.getElementById('validationTimeoutModal');
+                    const maxRetries = document.getElementById('maxRetriesModal');
+                    
+                    if (maxConcurrent) maxConcurrent.value = perf.max_concurrent_files || 5;
+                    if (requestDelay) requestDelay.value = perf.request_delay || 1.0;
+                    if (githubTimeout) githubTimeout.value = perf.github_timeout || 30;
+                    if (validationTimeout) validationTimeout.value = perf.validation_timeout || 30;
+                    if (maxRetries) maxRetries.value = perf.max_retries || 3;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load config to modal:', error);
     }
 }
 
