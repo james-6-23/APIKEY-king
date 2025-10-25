@@ -450,17 +450,13 @@ function connectWebSocket() {
             const message = messageQueue.shift();
             
             if (message.event === 'log') {
-                // 跳过 info 类型日志以减少DOM操作
-                if (message.data.type !== 'info' || messageQueue.length < 5) {
-                    addLogEntry(message.data);
-                }
+                // 显示所有类型的日志
+                addLogEntry(message.data);
             } else if (message.event === 'history') {
-                // 只显示最近20条历史日志
-                const recentLogs = message.data.slice(-20);
+                // 显示最近50条历史日志
+                const recentLogs = message.data.slice(-50);
                 recentLogs.forEach(log => {
-                    if (log.type !== 'info') { // 跳过info日志
-                        addLogEntry(log);
-                    }
+                    addLogEntry(log);
                 });
             } else if (message.event === 'stats') {
                 updateStats(message.data);

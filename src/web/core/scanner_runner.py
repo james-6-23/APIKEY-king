@@ -306,8 +306,8 @@ class ScannerRunner:
                 log_type = 'error'
             elif '⚠️' in message or 'warning' in message.lower():
                 log_type = 'warning'
-            elif '🌐' in message:
-                # Don't log every fetch to reduce noise
+            elif '🌐 Fetching:' in message:
+                # Don't log every individual file fetch to reduce noise
                 return
             
             self.log_service.add_log(log_type, message)
