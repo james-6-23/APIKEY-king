@@ -427,11 +427,9 @@ function connectWebSocket() {
             const message = JSON.parse(event.data);
             messageQueue.push(message);
             
-            // 批量处理：最多100ms处理一次
-            const now = Date.now();
-            if (!processingQueue && (messageQueue.length > 10 || now - lastProcessTime > 100)) {
+            // 立即处理消息（实时显示）
+            if (!processingQueue) {
                 processingQueue = true;
-                lastProcessTime = now;
                 requestAnimationFrame(() => {
                     processMessageQueue();
                     processingQueue = false;
@@ -443,10 +441,8 @@ function connectWebSocket() {
     };
 
     function processMessageQueue() {
-        // 激进优化：每次最多处理5条消息
-        const batchSize = Math.min(messageQueue.length, 5);
-        
-        for (let i = 0; i < batchSize; i++) {
+        // 处理队列中的所有消息（实时显示）
+        while (messageQueue.length > 0) {
             const message = messageQueue.shift();
             
             if (message.event === 'log') {
@@ -461,15 +457,6 @@ function connectWebSocket() {
             } else if (message.event === 'stats') {
                 updateStats(message.data);
             }
-        }
-        
-        // 如果还有很多消息，延迟处理
-        if (messageQueue.length > 0) {
-            setTimeout(() => {
-                if (messageQueue.length > 0) {
-                    requestAnimationFrame(() => processMessageQueue());
-                }
-            }, 200); // 增加延迟
         }
     }
 
@@ -497,10 +484,11 @@ function addLogEntry(log) {
     
     if (!logUpdateScheduled) {
         logUpdateScheduled = true;
-        requestIdleCallback(() => {
+        // 使用更短的延迟，确保实时显示
+        setTimeout(() => {
             flushLogBuffer();
             logUpdateScheduled = false;
-        }, { timeout: 500 });
+        }, 16); // ~60fps
     }
 }
 
@@ -552,11 +540,8 @@ function flushLogBuffer() {
         container.removeChild(container.firstChild);
     }
     
-    // 智能滚动：只在接近底部时自动滚动
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-    if (isNearBottom) {
-        container.scrollTop = container.scrollHeight;
-    }
+    // 自动滚动到底部（显示最新日志）
+    container.scrollTop = container.scrollHeight;
 }
 
 function clearLogs() {
