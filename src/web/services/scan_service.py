@@ -38,7 +38,6 @@ class ScanService:
         self._scanner_thread = None
         self._stop_flag = False
         self._current_scan_mode = None  # 当前扫描使用的模式
-        self._current_report_id = None  # 当前扫描报告ID
         self._scan_start_time = None  # 扫描开始时间
         self._stats = {
             "total_files": 0,
@@ -48,7 +47,10 @@ class ScanService:
             "current_query": "",
             "current_query_index": 0,
             "total_queries": 0,
-            "progress_percent": 0
+            "progress_percent": 0,
+            "queries_completed": 0,
+            "initial_unprocessed_queries": 0,
+            "remaining_queries": 0
         }
     
     def start_scan(self) -> Dict:
@@ -67,7 +69,7 @@ class ScanService:
         self._stop_flag = False
         self._running = True
         self._current_scan_mode = config.get("scan_mode", "compatible")  # 记录当前扫描模式
-        self._scan_start_time = datetime.now().isoformat()
+        self._scan_start_time = datetime.now()
         
         # 重置统计
         self._stats = {
@@ -78,13 +80,11 @@ class ScanService:
             "current_query": "",
             "current_query_index": 0,
             "total_queries": 0,
-            "progress_percent": 0
+            "progress_percent": 0,
+            "queries_completed": 0,
+            "initial_unprocessed_queries": 0,
+            "remaining_queries": 0
         }
-        
-        # 创建扫描报告
-        from ..services.report_service import ReportService
-        report_svc = ReportService()
-        self._current_report_id = report_svc.create_report(self._stats, self._current_scan_mode)
         
         from ..core.scanner_runner import ScannerRunner
         runner = ScannerRunner(config, self._stats, log_svc, self)
@@ -151,19 +151,39 @@ class ScanService:
         """Set running status (called by runner)."""
         self._running = running
         if not running:
-            # 更新扫描报告
-            if self._current_report_id:
+            self._handle_scan_finished(False)
+
+    def finish_scan(self, completed: bool):
+        """Finalize scan state when runner exits."""
+        self._handle_scan_finished(completed)
+
+    def _handle_scan_finished(self, completed: bool):
+        """Handle cleanup and optional report creation when scan stops."""
+        if completed and self._current_scan_mode:
+            if (
+                self._stats.get("initial_unprocessed_queries", 0) > 0
+                and self._stats.get("remaining_queries", 0) == 0
+            ):
                 from ..services.report_service import ReportService
-                from datetime import datetime
+
                 report_svc = ReportService()
-                report_svc.update_report(
-                    self._current_report_id,
+                start_time = self._scan_start_time or datetime.now()
+                end_time = datetime.now()
+                report_svc.create_report(
                     self._stats,
-                    end_time=datetime.now().isoformat()
+                    self._current_scan_mode,
+                    start_time,
+                    end_time
                 )
-                self._current_report_id = None
-            
-            self._current_scan_mode = None  # 清除扫描模式
+
+        if not completed:
+            # 如果扫描被终止，保留已统计信息供下一次恢复
+            pass
+
+        # 重置运行状态
+        self._current_scan_mode = None
+        self._scan_start_time = None
+        self._paused = False
     
     def is_paused(self) -> bool:
         """Check if scanner is paused."""

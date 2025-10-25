@@ -206,7 +206,9 @@ class ScannerRunner:
             self.log_service.add_log("error", f"Scanner error: {str(e)}")
         finally:
             # 确保扫描结束时重置运行状态
-            self.scan_service.set_running(False)
+            self.scan_service.finish_scan(
+                completed=(not stop_flag())
+            )
             self.log_service.add_log("info", "Scanner thread terminated")
     
     def _apply_scan_mode_config(self, config: AppConfig, scan_mode: ScanMode):
