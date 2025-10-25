@@ -11,6 +11,7 @@ class LogService:
     """Log management service - Singleton."""
     
     _instance = None
+    _main_loop = None  # 存储主事件循环引用
     
     def __new__(cls):
         if cls._instance is None:
@@ -26,6 +27,10 @@ class LogService:
         self._logs = []
         self._websocket_connections = []
     
+    def set_event_loop(self, loop):
+        """Set the main event loop for cross-thread communication."""
+        LogService._main_loop = loop
+    
     def add_log(self, log_type: str, message: str, data: Optional[Dict] = None):
         """Add log entry."""
         log_entry = {
@@ -40,16 +45,20 @@ class LogService:
         if len(self._logs) > 1000:
             self._logs = self._logs[-1000:]
         
-        # Broadcast to websockets (sync version)
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(self._broadcast_message({
-                    "event": "log",
-                    "data": log_entry
-                }))
-        except:
-            pass  # Skip if no event loop
+        # Broadcast to websockets (thread-safe)
+        if LogService._main_loop and len(self._websocket_connections) > 0:
+            try:
+                # 使用线程安全的方式调度协程到主事件循环
+                asyncio.run_coroutine_threadsafe(
+                    self._broadcast_message({
+                        "event": "log",
+                        "data": log_entry
+                    }),
+                    LogService._main_loop
+                )
+            except Exception as e:
+                # 静默失败，不影响主流程
+                pass
     
     def get_recent_logs(self, limit: int = 100) -> List[Dict]:
         """Get recent logs."""

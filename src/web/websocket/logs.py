@@ -13,6 +13,11 @@ log_service = LogService()
 async def websocket_logs(websocket: WebSocket):
     """WebSocket endpoint for real-time logs."""
     await websocket.accept()
+    
+    # 设置主事件循环（首次连接时）
+    import asyncio
+    log_service.set_event_loop(asyncio.get_running_loop())
+    
     log_service.add_websocket(websocket)
     
     try:
