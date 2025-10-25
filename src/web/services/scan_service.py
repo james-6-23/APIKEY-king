@@ -36,6 +36,7 @@ class ScanService:
         self._paused = False
         self._scanner_thread = None
         self._stop_flag = False
+        self._current_scan_mode = None  # 当前扫描使用的模式
         self._stats = {
             "total_files": 0,
             "total_keys": 0,
@@ -62,13 +63,17 @@ class ScanService:
         # Start scanner in background thread
         self._stop_flag = False
         self._running = True
+        self._current_scan_mode = config.get("scan_mode", "compatible")  # 记录当前扫描模式
         
         from ..core.scanner_runner import ScannerRunner
         runner = ScannerRunner(config, self._stats, log_svc, self)
         self._scanner_thread = Thread(target=runner.run, args=(lambda: self._stop_flag,), daemon=True)
         self._scanner_thread.start()
         
-        log_svc.add_log("success", "Scanner started", {"mode": config.get("scan_mode")})
+        # 清除配置缓存，确保下次启动使用最新配置
+        cfg_service.clear_cache()
+        
+        log_svc.add_log("success", f"Scanner started with mode: {self._current_scan_mode}")
         
         return {"status": "ok", "message": "Scanner started"}
     
@@ -117,12 +122,15 @@ class ScanService:
         return {
             "running": self._running,
             "paused": self._paused,
+            "scan_mode": self._current_scan_mode,  # 添加当前扫描模式
             "stats": self._stats
         }
     
     def set_running(self, running: bool):
         """Set running status (called by runner)."""
         self._running = running
+        if not running:
+            self._current_scan_mode = None  # 清除扫描模式
     
     def is_paused(self) -> bool:
         """Check if scanner is paused."""

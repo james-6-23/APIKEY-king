@@ -386,6 +386,7 @@ async function loadStatus() {
             updateScanStatus(data.running, data.paused);
             updateStats(data.stats);
             updateProgress(data.stats);
+            updateScanMode(data.scan_mode);  // 更新扫描模式显示
         }
     } catch (error) {
         console.error('Failed to load status:', error);
@@ -410,6 +411,30 @@ function updateProgress(stats) {
     if (progressBar) progressBar.style.width = `${percent}%`;
     if (progressText) progressText.textContent = `${percent}% (${stats.current_query_index || 0}/${stats.total_queries || 0})`;
     if (currentQuery) currentQuery.textContent = query;
+}
+
+function updateScanMode(scanMode) {
+    const modeContainer = document.getElementById('currentScanMode');
+    const modeText = document.getElementById('scanModeText');
+    
+    if (scanMode && modeContainer && modeText) {
+        // 显示模式信息
+        modeContainer.classList.remove('hidden');
+        
+        // 转换模式名称为友好显示
+        const modeNames = {
+            'compatible': '全部平台',
+            'gemini-only': 'Gemini',
+            'openrouter-only': 'OpenRouter',
+            'modelscope-only': 'ModelScope',
+            'siliconflow-only': 'SiliconFlow'
+        };
+        
+        modeText.textContent = modeNames[scanMode] || scanMode;
+    } else if (modeContainer) {
+        // 隐藏模式信息
+        modeContainer.classList.add('hidden');
+    }
 }
 
 // WebSocket for real-time logs

@@ -56,8 +56,8 @@ class ConfigService:
         db.save_config("validators", config["validators"])
         db.save_config("performance", config["performance"])
         
-        # 更新缓存
-        self._cache = config
+        # 清除缓存，确保下次读取最新配置
+        self._cache = {}
         
         log_svc = get_log_service()
         log_svc.add_log("info", "Configuration updated", {
