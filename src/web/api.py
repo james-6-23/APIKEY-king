@@ -15,6 +15,7 @@ from .routers import (
     logs_router,
     memory_router,
     settings_router,
+    queries_router,
 )
 from .websocket import websocket_logs_router
 
@@ -33,6 +34,7 @@ app = FastAPI(
         {"name": "logs", "description": "日志查询接口"},
         {"name": "memory", "description": "扫描记忆管理接口"},
         {"name": "settings", "description": "系统设置接口"},
+        {"name": "queries", "description": "查询规则管理接口"},
     ]
 )
 
@@ -53,6 +55,7 @@ app.include_router(keys_router)
 app.include_router(logs_router)
 app.include_router(memory_router)
 app.include_router(settings_router)
+app.include_router(queries_router)
 
 # Include WebSocket router
 app.include_router(websocket_logs_router)

@@ -84,6 +84,7 @@ function showDashboard() {
     loadConfig();
     loadKeys();
     loadMemoryStats();
+    loadQueryStats();
     initCharts();
     startStatusPolling();
     connectWebSocket();
@@ -340,11 +341,14 @@ function updateScanStatus(running, paused = false) {
     }
 }
 
-// Status Polling
+// Status Polling with optimization
 let statusInterval;
+let lastStatusUpdate = 0;
+
 function startStatusPolling() {
     loadStatus();
-    statusInterval = setInterval(loadStatus, 2000);
+    // 降低轮询频率到5秒
+    statusInterval = setInterval(loadStatus, 5000);
 }
 
 async function loadStatus() {
@@ -364,7 +368,8 @@ async function loadStatus() {
     }
 }
 
-function updateStats(stats) {
+// Throttled stats update
+const updateStats = window.perfUtils.throttle(function(stats) {
     document.getElementById('statFiles').textContent = stats.total_files || 0;
     document.getElementById('statKeys').textContent = stats.total_keys || 0;
     document.getElementById('statValidKeys').textContent = stats.valid_keys || 0;
@@ -373,7 +378,7 @@ function updateStats(stats) {
     if (stats.total_files > 0) {
         updateEfficiencyChart(stats);
     }
-}
+}, 1000); // 限制每秒更新一次
 
 function updateProgress(stats) {
     const progressBar = document.getElementById('progressBar');
@@ -393,17 +398,38 @@ function connectWebSocket() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/logs`);
 
+    // Batch process WebSocket messages
+    let messageQueue = [];
+    let processingQueue = false;
+
     ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
+        messageQueue.push(message);
         
-        if (message.event === 'log') {
-            addLogEntry(message.data);
-        } else if (message.event === 'history') {
-            message.data.forEach(log => addLogEntry(log));
-        } else if (message.event === 'stats') {
-            updateStats(message.data);
+        if (!processingQueue) {
+            processingQueue = true;
+            requestAnimationFrame(() => {
+                processMessageQueue();
+                processingQueue = false;
+            });
         }
     };
+
+    function processMessageQueue() {
+        while (messageQueue.length > 0) {
+            const message = messageQueue.shift();
+            
+            if (message.event === 'log') {
+                addLogEntry(message.data);
+            } else if (message.event === 'history') {
+                // Only show last 50 logs from history
+                const recentLogs = message.data.slice(-50);
+                recentLogs.forEach(log => addLogEntry(log));
+            } else if (message.event === 'stats') {
+                updateStats(message.data);
+            }
+        }
+    }
 
     ws.onclose = () => {
         console.log('WebSocket disconnected, reconnecting in 3s...');
@@ -415,7 +441,8 @@ function connectWebSocket() {
     };
 }
 
-function addLogEntry(log) {
+// Optimized log entry with throttling
+const addLogEntry = window.perfUtils.throttle(function(log) {
     const container = document.getElementById('logsContainer');
     
     // Clear placeholder
@@ -452,13 +479,17 @@ function addLogEntry(log) {
     `;
 
     container.appendChild(logDiv);
-    container.scrollTop = container.scrollHeight;
+    
+    // Use requestAnimationFrame for smooth scrolling
+    requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+    });
 
-    // Keep only last 500 logs
-    while (container.children.length > 500) {
+    // Keep only last 200 logs (减少DOM数量)
+    while (container.children.length > 200) {
         container.removeChild(container.firstChild);
     }
-}
+}, 100);
 
 function clearLogs() {
     const container = document.getElementById('logsContainer');
@@ -489,7 +520,8 @@ async function loadKeys(keyType = null, search = null) {
     }
 }
 
-function handleKeySearch() {
+// Optimized search with debounce
+const handleKeySearch = window.perfUtils.debounce(function() {
     const search = document.getElementById('keySearch').value.trim();
     const keyType = document.getElementById('keyTypeFilter').value;
     
@@ -510,7 +542,7 @@ function handleKeySearch() {
     }
     
     displayKeys(filteredKeys);
-}
+}, 300);
 
 async function refreshKeys() {
     await loadKeys();
@@ -642,7 +674,8 @@ async function updateCharts() {
     }
 }
 
-function updateEfficiencyChart(stats) {
+// Throttled chart update
+const updateEfficiencyChart = window.perfUtils.throttle(function(stats) {
     if (!efficiencyChart) return;
 
     const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -658,7 +691,7 @@ function updateEfficiencyChart(stats) {
     efficiencyChart.data.datasets[0].data.push(stats.total_files || 0);
     efficiencyChart.data.datasets[1].data.push(stats.valid_keys || 0);
     efficiencyChart.update('none'); // No animation for real-time updates
-}
+}, 2000); // 限制每2秒更新一次
 
 function displayKeys(keys) {
     const tbody = document.getElementById('keysTableBody');
@@ -824,6 +857,27 @@ async function clearMemory() {
         loadMemoryStats();
     } catch (error) {
         showToast(error.message, 'error');
+    }
+}
+
+// Query Stats
+async function loadQueryStats() {
+    try {
+        const scanMode = document.querySelector('input[name="scanMode"]:checked').value;
+        const mode = scanMode === 'compatible' ? 'default' : scanMode.replace('-only', '');
+        
+        const response = await fetch(`${API_BASE}/api/queries?mode=${mode}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            document.getElementById('queryInfo').textContent = `${data.total} 条搜寻规则`;
+            showToast(`当前使用 ${data.total} 条搜寻规则（${mode}模式）`, 'success');
+        }
+    } catch (error) {
+        console.error('Failed to load query stats:', error);
+        document.getElementById('queryInfo').textContent = '查看搜寻规则';
     }
 }
 
