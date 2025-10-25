@@ -43,7 +43,8 @@ class ScannerRunner:
             # Apply scan mode overrides
             self._apply_scan_mode_config(app_config, scan_mode)
 
-            github_service = GitHubService(app_config)
+            # Create GitHub service with log callback
+            github_service = GitHubService(app_config, log_callback=self._create_log_callback())
             file_service = FileService(app_config.data_path)
 
             # Create extractors and validators with custom config
@@ -76,6 +77,19 @@ class ScannerRunner:
                 loop_count += 1
                 self.log_service.add_log("info", f"Starting scan loop #{loop_count}")
 
+                # Check if all queries have been processed
+                all_processed = True
+                for query in queries:
+                    normalized_query = " ".join(query.split())
+                    if not db.is_query_processed(normalized_query):
+                        all_processed = False
+                        break
+                
+                if all_processed:
+                    self.log_service.add_log("success", "All queries have been processed! Scan completed.")
+                    break
+
+                queries_processed_this_loop = 0
                 for i, query in enumerate(queries, 1):
                     if stop_flag():
                         break
@@ -96,6 +110,7 @@ class ScannerRunner:
                     if db.is_query_processed(normalized_query):
                         continue
 
+                    queries_processed_this_loop += 1
                     self.log_service.add_log("info", f"Processing query {i}/{len(queries)}: {query[:50]}...")
 
                     try:
@@ -172,11 +187,20 @@ class ScannerRunner:
                     except Exception as e:
                         self.log_service.add_log("error", f"Error processing query: {str(e)}")
 
+                # If no new queries were processed, check again in next loop
+                if queries_processed_this_loop == 0 and not stop_flag():
+                    # All queries already processed, will exit on next loop check
+                    self.log_service.add_log("info", "No new queries to process, checking completion...")
+                    continue
+                
                 if not stop_flag():
                     self.log_service.add_log("info", "Scan loop complete, sleeping 10 seconds...")
                     time.sleep(10)
 
-            self.log_service.add_log("warning", "Scanner stopped by user")
+            if stop_flag():
+                self.log_service.add_log("warning", "Scanner stopped by user")
+            else:
+                self.log_service.add_log("success", "Scanner completed successfully")
 
         except Exception as e:
             self.log_service.add_log("error", f"Scanner error: {str(e)}")
@@ -269,6 +293,26 @@ class ScannerRunner:
                 self.log_service.add_log("error", f"Failed to create {name} validator: {str(e)}")
         
         return validators
+    
+    def _create_log_callback(self):
+        """Create a log callback function for GitHub service."""
+        def log_callback(message: str):
+            """Callback to send GitHub service logs to log_service."""
+            # Determine log type based on message content
+            log_type = 'info'
+            if '✅' in message or '🔍' in message or 'complete' in message.lower():
+                log_type = 'success'
+            elif '❌' in message or 'error' in message.lower() or 'failed' in message.lower():
+                log_type = 'error'
+            elif '⚠️' in message or 'warning' in message.lower():
+                log_type = 'warning'
+            elif '🌐' in message:
+                # Don't log every fetch to reduce noise
+                return
+            
+            self.log_service.add_log(log_type, message)
+        
+        return log_callback
     
     def _determine_key_type(self, key: str) -> str:
         """Determine key type from key format."""

@@ -14,12 +14,13 @@ from ..models.config import AppConfig, ProxyConfig
 class GitHubService:
     """Service for GitHub API interactions."""
     
-    def __init__(self, config: AppConfig):
+    def __init__(self, config: AppConfig, log_callback=None):
         self.config = config
         self.tokens = config.github.tokens
         self.api_url = config.github.api_url
         self.proxies = config.get_proxy_configs()
         self._token_ptr = 0
+        self.log_callback = log_callback or print  # Use callback or default to print
     
     def _get_next_token(self) -> Optional[str]:
         """Get next token from rotation."""
@@ -97,7 +98,7 @@ class GitHubService:
                     
                     rate_limit_remaining = response.headers.get('X-RateLimit-Remaining')
                     if rate_limit_remaining and int(rate_limit_remaining) < 3:
-                        print(f"⚠️ Rate limit low: {rate_limit_remaining} remaining")
+                        self.log_callback(f"⚠️ Rate limit low: {rate_limit_remaining} remaining")
                     
                     response.raise_for_status()
                     page_result = response.json()
@@ -111,17 +112,17 @@ class GitHubService:
                     if status in (403, 429):
                         rate_limit_hits += 1
                         if rate_limit_remaining and int(rate_limit_remaining) == 0:
-                            print(f"⚠️ Token exhausted, switching to next token")
+                            self.log_callback(f"⚠️ Token exhausted, switching to next token")
                             continue
                         
                         wait = min(2 ** attempt + random.uniform(0, 1), 120)
                         if attempt >= 2:
-                            print(f"⚠️ Rate limit hit (attempt {attempt}/{max_retries}) - waiting {wait:.1f}s")
+                            self.log_callback(f"⚠️ Rate limit hit (attempt {attempt}/{max_retries}) - waiting {wait:.1f}s")
                         time.sleep(wait)
                         continue
                     else:
                         if attempt == max_retries:
-                            print(f"❌ HTTP {status} error after {max_retries} attempts on page {page}")
+                            self.log_callback(f"❌ HTTP {status} error after {max_retries} attempts on page {page}")
                         time.sleep(min(2 ** attempt, 30))
                         continue
                         
@@ -130,14 +131,14 @@ class GitHubService:
                     wait = min(2 ** attempt, 30)
                     
                     if attempt == max_retries:
-                        print(f"❌ Network error after {max_retries} attempts on page {page}: {type(e).__name__}")
+                        self.log_callback(f"❌ Network error after {max_retries} attempts on page {page}: {type(e).__name__}")
                     
                     time.sleep(wait)
                     continue
             
             if not page_success or not page_result:
                 if page == 1:
-                    print(f"❌ First page failed for query: {query[:50]}...")
+                    self.log_callback(f"❌ First page failed for query: {query[:50]}...")
                     break
                 continue
             
@@ -163,7 +164,7 @@ class GitHubService:
             
             if page < 10:
                 sleep_time = random.uniform(0.5, 1.5)
-                print(f"[WAIT] Processing query page {page}, items: {current_page_count}, sleep: {sleep_time:.1f}s")
+                self.log_callback(f"[WAIT] Processing query page {page}, items: {current_page_count}, sleep: {sleep_time:.1f}s")
                 time.sleep(sleep_time)
         
         final_count = len(all_items)
@@ -172,9 +173,9 @@ class GitHubService:
         if expected_total and final_count < expected_total:
             discrepancy = expected_total - final_count
             if discrepancy > expected_total * 0.1:
-                print(f"⚠️ Significant data loss: {discrepancy}/{expected_total} items missing")
+                self.log_callback(f"⚠️ Significant data loss: {discrepancy}/{expected_total} items missing")
         
-        print(f"🔍 Search complete: {final_count}/{expected_total or '?'} items, {pages_processed} pages, {total_requests} requests")
+        self.log_callback(f"🔍 Search complete: {final_count}/{expected_total or '?'} items, {pages_processed} pages, {total_requests} requests")
         
         return {
             "total_count": total_count,
@@ -213,7 +214,7 @@ class GitHubService:
         try:
             proxies = self._get_random_proxy()
             
-            print(f"🌐 Fetching: {metadata_url}")
+            self.log_callback(f"🌐 Fetching: {metadata_url}")
             metadata_response = requests.get(
                 metadata_url,
                 headers=headers,
@@ -233,12 +234,12 @@ class GitHubService:
                     decoded_content = base64.b64decode(content).decode('utf-8')
                     return decoded_content
                 except Exception as e:
-                    print(f"⚠️ Failed to decode base64 content: {e}")
+                    self.log_callback(f"⚠️ Failed to decode base64 content: {e}")
             
             # Fallback to download_url
             download_url = file_metadata.get("download_url")
             if not download_url:
-                print(f"⚠️ No download URL found")
+                self.log_callback(f"⚠️ No download URL found")
                 return None
             
             content_response = requests.get(

@@ -39,3 +39,6 @@ Thumbs.db
 # Temporary
 *.tmp
 *.bak
+LOGGING_FIX.md
+TOKEN_DISPLAY_UPDATE.md
+UPDATES.md

@@ -5,28 +5,88 @@
 "https://api.siliconflow.cn/v1" in:file
 "api.siliconflow.cn/v1" in:file
 "siliconflow.cn" in:file
+"api.siliconflow.cn" in:file
 
 # 密钥格式搜索 - sk- 开头的密钥
 "sk-" AND "siliconflow" in:file
 "sk-" AND "api.siliconflow.cn" in:file
+"SILICONFLOW_API_KEY" in:file
+"siliconflow_api_key" in:file
 
 # 上下文搜索 - 常见的配置模式
 "base_url" AND "siliconflow" in:file
 "api_key" AND "siliconflow" in:file
 "OpenAI" AND "siliconflow" in:file
+"OPENAI_API_BASE" AND "siliconflow" in:file
+"OPENAI_BASE_URL" AND "siliconflow" in:file
 
 # 特定文件类型搜索
 "siliconflow" in:file extension:py
 "siliconflow" in:file extension:js
 "siliconflow" in:file extension:ts
 "siliconflow" in:file filename:.env
+"siliconflow" in:file extension:json
+"siliconflow" in:file extension:yml
+"siliconflow" in:file extension:toml
+"siliconflow" in:file extension:ini
 
 # 代码模式搜索
 "client = OpenAI" AND "siliconflow" in:file
 "base_url" AND "api.siliconflow.cn" in:file
 "YOUR_API_KEY_FROM_CLOUD_SILICONFLOW_CN" in:file
+"from openai import OpenAI" AND "siliconflow" in:file
+"import OpenAI" AND "siliconflow" in:file
 
 # 配置文件搜索
 "siliconflow" in:file filename:config
 "siliconflow" in:file filename:.json
 "siliconflow" in:file filename:.yaml
+"siliconflow" in:file filename:.toml
+"siliconflow" in:file filename:settings
+
+# 环境变量和配置
+"SILICONFLOW" in:file filename:.env
+"silicon_flow" in:file
+"silicon-flow" in:file
+"SiliconFlow" in:file
+
+# 中文搜索模式
+"硅基流动" in:file
+"硅流" in:file
+
+# 更多 Python 特定搜索
+"openai.api_base" AND "siliconflow" in:file
+"openai.base_url" AND "siliconflow" in:file
+"OPENAI_API_KEY" AND "siliconflow" in:file
+
+# JavaScript/TypeScript 特定搜索
+"baseURL" AND "siliconflow" in:file
+"apiKey" AND "siliconflow" in:file
+"process.env" AND "siliconflow" in:file
+
+# 配置文件关键词
+"model_config" AND "siliconflow" in:file
+"llm_config" AND "siliconflow" in:file
+"ai_config" AND "siliconflow" in:file
+
+# Docker 和部署配置
+"docker-compose" AND "siliconflow" in:file
+"deployment" AND "siliconflow" in:file
+"k8s" AND "siliconflow" in:file
+
+# README 和文档
+"README" AND "siliconflow" in:file
+"setup" AND "siliconflow" in:file
+"installation" AND "siliconflow" in:file
+
+# 特定框架搜索
+"langchain" AND "siliconflow" in:file
+"llama_index" AND "siliconflow" in:file
+"dify" AND "siliconflow" in:file
+"fastapi" AND "siliconflow" in:file
+"flask" AND "siliconflow" in:file
+
+# API 端点相关
+"/v1/chat/completions" AND "siliconflow" in:file
+"/v1/completions" AND "siliconflow" in:file
+"/v1/embeddings" AND "siliconflow" in:file

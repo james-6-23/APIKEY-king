@@ -158,8 +158,15 @@ async function loadConfig() {
         if (response.ok) {
             const data = await response.json();
             if (data.config) {
-                // Don't load tokens for security
+                // 加载 GitHub Tokens (明文显示)
+                if (data.config.github_tokens && data.config.github_tokens.length > 0) {
+                    document.getElementById('githubTokens').value = data.config.github_tokens.join('\n');
+                }
+                
+                // 加载其他配置
                 document.getElementById('proxy').value = data.config.proxy || '';
+                document.getElementById('dateRange').value = data.config.date_range_days || 730;
+                
                 const scanMode = data.config.scan_mode || 'compatible';
                 document.querySelector(`input[name="scanMode"][value="${scanMode}"]`).checked = true;
                 
@@ -711,6 +718,38 @@ async function exportKeys() {
         link.click();
 
         showToast('CSV 已导出', 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function exportKeysTxt() {
+    try {
+        const response = await fetch(`${API_BASE}/api/keys`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) throw new Error('导出失败');
+
+        const data = await response.json();
+        const keys = data.keys;
+
+        if (keys.length === 0) {
+            showToast('没有可导出的数据', 'error');
+            return;
+        }
+
+        // Create TXT - one key per line
+        const txt = keys.map(k => k.key).join('\n');
+
+        // Download
+        const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `apikeys_${new Date().toISOString().split('T')[0]}.txt`;
+        link.click();
+
+        showToast('TXT 已导出', 'success');
     } catch (error) {
         showToast(error.message, 'error');
     }
