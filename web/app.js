@@ -3,8 +3,16 @@ const API_BASE = window.location.origin;
 let authToken = localStorage.getItem('auth_token');
 let ws = null;
 
+// Charts
+let keyTypeChart = null;
+let efficiencyChart = null;
+
+// All keys cache for filtering
+let allKeysCache = [];
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    initDarkMode();
     if (authToken) {
         verifyAuth();
     } else {
@@ -76,6 +84,7 @@ function showDashboard() {
     loadConfig();
     loadKeys();
     loadMemoryStats();
+    initCharts();
     startStatusPolling();
     connectWebSocket();
 }
@@ -214,7 +223,47 @@ async function handleStartScan() {
         }
 
         showToast('扫描已启动', 'success');
-        updateScanStatus(true);
+        updateScanStatus(true, false);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function handlePauseScan() {
+    try {
+        const response = await fetch(`${API_BASE}/api/scan/control`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'pause' })
+        });
+
+        if (!response.ok) throw new Error('暂停失败');
+
+        showToast('扫描已暂停', 'success');
+        updateScanStatus(true, true);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function handleResumeScan() {
+    try {
+        const response = await fetch(`${API_BASE}/api/scan/control`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'resume' })
+        });
+
+        if (!response.ok) throw new Error('恢复失败');
+
+        showToast('扫描已恢复', 'success');
+        updateScanStatus(true, false);
     } catch (error) {
         showToast(error.message, 'error');
     }
@@ -239,29 +288,55 @@ async function handleStopScan() {
     }
 }
 
-function updateScanStatus(running) {
+function updateScanStatus(running, paused = false) {
     const statusDiv = document.getElementById('scanStatus');
     const btnStart = document.getElementById('btnStart');
+    const btnPause = document.getElementById('btnPause');
+    const btnResume = document.getElementById('btnResume');
     const btnStop = document.getElementById('btnStop');
+    const progressContainer = document.getElementById('progressContainer');
 
     if (running) {
-        statusDiv.innerHTML = `
-            <div class="spinner"></div>
-            <span class="text-sm text-success font-medium">运行中</span>
-        `;
-        btnStart.disabled = true;
+        if (paused) {
+            // 暂停状态
+            statusDiv.innerHTML = `
+                <div class="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
+                <span class="text-sm text-amber-600 font-medium">已暂停</span>
+            `;
+            btnStart.disabled = true;
+            btnPause.classList.add('hidden');
+            btnResume.classList.remove('hidden');
+            btnResume.disabled = false;
+            btnStop.disabled = false;
+        } else {
+            // 运行中
+            statusDiv.innerHTML = `
+                <div class="spinner"></div>
+                <span class="text-sm text-success font-medium">运行中</span>
+            `;
+            btnStart.disabled = true;
+            btnPause.classList.remove('hidden');
+            btnPause.disabled = false;
+            btnResume.classList.add('hidden');
+            btnStop.disabled = false;
+        }
         btnStart.classList.add('opacity-50', 'cursor-not-allowed');
-        btnStop.disabled = false;
         btnStop.classList.remove('opacity-50', 'cursor-not-allowed');
+        progressContainer.classList.remove('hidden');
     } else {
+        // 未运行
         statusDiv.innerHTML = `
             <div class="w-3 h-3 bg-slate-400 rounded-full"></div>
             <span class="text-sm text-slate-600">未运行</span>
         `;
         btnStart.disabled = false;
         btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnPause.disabled = true;
+        btnPause.classList.add('opacity-50', 'cursor-not-allowed');
+        btnResume.classList.add('hidden');
         btnStop.disabled = true;
         btnStop.classList.add('opacity-50', 'cursor-not-allowed');
+        progressContainer.classList.add('hidden');
     }
 }
 
@@ -280,8 +355,9 @@ async function loadStatus() {
 
         if (response.ok) {
             const data = await response.json();
-            updateScanStatus(data.running);
+            updateScanStatus(data.running, data.paused);
             updateStats(data.stats);
+            updateProgress(data.stats);
         }
     } catch (error) {
         console.error('Failed to load status:', error);
@@ -292,6 +368,24 @@ function updateStats(stats) {
     document.getElementById('statFiles').textContent = stats.total_files || 0;
     document.getElementById('statKeys').textContent = stats.total_keys || 0;
     document.getElementById('statValidKeys').textContent = stats.valid_keys || 0;
+    
+    // Update efficiency chart if scanning
+    if (stats.total_files > 0) {
+        updateEfficiencyChart(stats);
+    }
+}
+
+function updateProgress(stats) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const currentQuery = document.getElementById('currentQuery');
+    
+    const percent = stats.progress_percent || 0;
+    const query = stats.current_query || '-';
+    
+    if (progressBar) progressBar.style.width = `${percent}%`;
+    if (progressText) progressText.textContent = `${percent}% (${stats.current_query_index || 0}/${stats.total_queries || 0})`;
+    if (currentQuery) currentQuery.textContent = query;
 }
 
 // WebSocket for real-time logs
@@ -372,7 +466,143 @@ function clearLogs() {
 }
 
 // Keys Management
-async function loadKeys() {
+async function loadKeys(keyType = null, search = null) {
+    try {
+        let url = `${API_BASE}/api/keys`;
+        const params = new URLSearchParams();
+        if (keyType) params.append('key_type', keyType);
+        if (search) params.append('search', search);
+        if (params.toString()) url += `?${params.toString()}`;
+
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            allKeysCache = data.keys;
+            displayKeys(data.keys);
+            updateCharts();
+        }
+    } catch (error) {
+        console.error('Failed to load keys:', error);
+    }
+}
+
+function handleKeySearch() {
+    const search = document.getElementById('keySearch').value.trim();
+    const keyType = document.getElementById('keyTypeFilter').value;
+    
+    let filteredKeys = allKeysCache;
+    
+    // Filter by type
+    if (keyType) {
+        filteredKeys = filteredKeys.filter(key => key.type.toLowerCase() === keyType);
+    }
+    
+    // Filter by search
+    if (search) {
+        const searchLower = search.toLowerCase();
+        filteredKeys = filteredKeys.filter(key => 
+            key.key.toLowerCase().includes(searchLower) ||
+            key.source.toLowerCase().includes(searchLower)
+        );
+    }
+    
+    displayKeys(filteredKeys);
+}
+
+async function refreshKeys() {
+    await loadKeys();
+    updateCharts();
+    showToast('已刷新', 'success');
+}
+
+// Charts
+function initCharts() {
+    // Key Type Distribution Chart
+    const keyTypeCtx = document.getElementById('keyTypeChart');
+    if (keyTypeCtx) {
+        keyTypeChart = new Chart(keyTypeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Gemini', 'OpenRouter', 'ModelScope', 'SiliconFlow'],
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: [
+                        'rgb(147, 51, 234)',  // purple
+                        'rgb(59, 130, 246)',   // blue
+                        'rgb(34, 197, 94)',    // green
+                        'rgb(251, 146, 60)'    // orange
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Efficiency Trend Chart
+    const efficiencyCtx = document.getElementById('efficiencyChart');
+    if (efficiencyCtx) {
+        efficiencyChart = new Chart(efficiencyCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '扫描文件数',
+                    data: [],
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: '有效密钥数',
+                    data: [],
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { font: { size: 10 } }
+                    },
+                    x: {
+                        ticks: { font: { size: 10 } }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+}
+
+async function updateCharts() {
     try {
         const response = await fetch(`${API_BASE}/api/keys`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -380,16 +610,54 @@ async function loadKeys() {
 
         if (response.ok) {
             const data = await response.json();
-            displayKeys(data.keys);
+            const keys = data.keys;
+
+            // Update key type distribution
+            const typeCounts = {
+                'gemini': 0,
+                'openrouter': 0,
+                'modelscope': 0,
+                'siliconflow': 0
+            };
+
+            keys.forEach(key => {
+                const type = key.type.toLowerCase();
+                if (typeCounts.hasOwnProperty(type)) {
+                    typeCounts[type]++;
+                }
+            });
+
+            if (keyTypeChart) {
+                keyTypeChart.data.datasets[0].data = [
+                    typeCounts.gemini,
+                    typeCounts.openrouter,
+                    typeCounts.modelscope,
+                    typeCounts.siliconflow
+                ];
+                keyTypeChart.update();
+            }
         }
     } catch (error) {
-        console.error('Failed to load keys:', error);
+        console.error('Failed to update charts:', error);
     }
 }
 
-async function refreshKeys() {
-    await loadKeys();
-    showToast('已刷新', 'success');
+function updateEfficiencyChart(stats) {
+    if (!efficiencyChart) return;
+
+    const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    
+    // Keep only last 20 data points
+    if (efficiencyChart.data.labels.length >= 20) {
+        efficiencyChart.data.labels.shift();
+        efficiencyChart.data.datasets[0].data.shift();
+        efficiencyChart.data.datasets[1].data.shift();
+    }
+
+    efficiencyChart.data.labels.push(now);
+    efficiencyChart.data.datasets[0].data.push(stats.total_files || 0);
+    efficiencyChart.data.datasets[1].data.push(stats.valid_keys || 0);
+    efficiencyChart.update('none'); // No animation for real-time updates
 }
 
 function displayKeys(keys) {
@@ -613,6 +881,54 @@ async function handleChangePassword(event) {
         }, 1500);
     } catch (error) {
         showToast(error.message, 'error');
+    }
+}
+
+// Dark Mode
+function initDarkMode() {
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode === 'true') {
+        document.documentElement.classList.add('dark');
+        updateDarkModeIcon(true);
+    }
+}
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('darkMode', isDark);
+    updateDarkModeIcon(isDark);
+    updateChartsTheme(isDark);
+    showToast(isDark ? '已切换到暗黑模式' : '已切换到亮色模式', 'success');
+}
+
+function updateDarkModeIcon(isDark) {
+    const icon = document.getElementById('darkModeIcon');
+    const text = document.getElementById('darkModeText');
+    
+    if (isDark) {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
+        if (text) text.textContent = '亮色';
+    } else {
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
+        if (text) text.textContent = '暗黑';
+    }
+}
+
+function updateChartsTheme(isDark) {
+    const textColor = isDark ? '#e2e8f0' : '#334155';
+    const gridColor = isDark ? '#334155' : '#e2e8f0';
+    
+    if (keyTypeChart) {
+        keyTypeChart.options.plugins.legend.labels.color = textColor;
+        keyTypeChart.update();
+    }
+    
+    if (efficiencyChart) {
+        efficiencyChart.options.scales.x.ticks.color = textColor;
+        efficiencyChart.options.scales.y.ticks.color = textColor;
+        efficiencyChart.options.scales.x.grid = { color: gridColor };
+        efficiencyChart.options.scales.y.grid = { color: gridColor };
+        efficiencyChart.update();
     }
 }
 

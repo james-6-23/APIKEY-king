@@ -12,10 +12,29 @@ key_service = KeyService()
 
 
 @router.get("")
-async def get_keys(payload: dict = Depends(verify_token_dependency)):
-    """Get discovered keys."""
+async def get_keys(
+    key_type: str = None,
+    search: str = None,
+    payload: dict = Depends(verify_token_dependency)
+):
+    """
+    Get discovered keys with optional filtering.
+    
+    - **key_type**: Filter by key type (gemini, openrouter, modelscope, siliconflow)
+    - **search**: Search in key value or source repository
+    """
     try:
-        keys_data = key_service.get_all_keys()
+        keys_data = key_service.get_all_keys(key_type)
+        
+        # Apply search filter
+        if search:
+            search_lower = search.lower()
+            keys_data = [
+                key for key in keys_data
+                if search_lower in key.get('key', '').lower() or
+                   search_lower in key.get('source', '').lower()
+            ]
+        
         return {
             "status": "ok",
             "keys": keys_data,

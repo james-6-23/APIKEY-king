@@ -17,13 +17,19 @@ async def control_scan(
     request: ScanControlRequest,
     payload: dict = Depends(verify_token_dependency)
 ):
-    """Start or stop scanning."""
+    """Start, stop, pause or resume scanning."""
     try:
         if request.action == "start":
             result = scan_service.start_scan()
             return result
         elif request.action == "stop":
             result = scan_service.stop_scan()
+            return result
+        elif request.action == "pause":
+            result = scan_service.pause_scan()
+            return result
+        elif request.action == "resume":
+            result = scan_service.resume_scan()
             return result
         else:
             raise HTTPException(status_code=400, detail="Invalid action")

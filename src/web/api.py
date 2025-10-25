@@ -22,7 +22,18 @@ from .websocket import websocket_logs_router
 app = FastAPI(
     title="APIKEY-king",
     description="API Key Discovery Tool with Web Interface",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_tags=[
+        {"name": "auth", "description": "认证相关接口"},
+        {"name": "config", "description": "配置管理接口"},
+        {"name": "scan", "description": "扫描控制接口"},
+        {"name": "keys", "description": "密钥管理接口"},
+        {"name": "logs", "description": "日志查询接口"},
+        {"name": "memory", "description": "扫描记忆管理接口"},
+        {"name": "settings", "description": "系统设置接口"},
+    ]
 )
 
 # CORS middleware

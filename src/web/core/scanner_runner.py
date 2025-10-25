@@ -18,10 +18,11 @@ from ..database.database import db
 class ScannerRunner:
     """Scanner runner that executes scans in background."""
     
-    def __init__(self, config: Dict, stats: Dict, log_service):
+    def __init__(self, config: Dict, stats: Dict, log_service, scan_service):
         self.config = config
         self.stats = stats
         self.log_service = log_service
+        self.scan_service = scan_service
     
     def run(self, stop_flag: Callable[[], bool]):
         """Run the scanner."""
@@ -66,6 +67,9 @@ class ScannerRunner:
             queries = file_service.load_queries(app_config.scan.queries_file)
             self.log_service.add_log("info", f"Loaded {len(queries)} queries")
             
+            # Update total queries for progress
+            self.stats["total_queries"] = len(queries)
+            
             # Scan loop
             loop_count = 0
             while not stop_flag():
@@ -75,6 +79,16 @@ class ScannerRunner:
                 for i, query in enumerate(queries, 1):
                     if stop_flag():
                         break
+                    
+                    # 暂停检查
+                    while self.scan_service.is_paused() and not stop_flag():
+                        time.sleep(1)
+                    
+                    if stop_flag():
+                        break
+                    
+                    # 更新进度
+                    self.scan_service.update_progress(i, len(queries), query[:50])
                     
                     normalized_query = " ".join(query.split())
                     
