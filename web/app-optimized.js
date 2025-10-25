@@ -21,6 +21,32 @@ function debounce(func, delay) {
     };
 }
 
+// Batch DOM updates
+class DOMBatcher {
+    constructor() {
+        this.updates = [];
+        this.scheduled = false;
+    }
+
+    add(updateFn) {
+        this.updates.push(updateFn);
+        if (!this.scheduled) {
+            this.scheduled = true;
+            requestAnimationFrame(() => this.flush());
+        }
+    }
+
+    flush() {
+        const updates = this.updates.splice(0);
+        updates.forEach(fn => fn());
+        this.scheduled = false;
+    }
+}
+
 // Export for use in main app.js
-window.perfUtils = { throttle, debounce };
+window.perfUtils = { 
+    throttle, 
+    debounce,
+    domBatcher: new DOMBatcher()
+};
 

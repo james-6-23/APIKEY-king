@@ -60,14 +60,14 @@ app.include_router(queries_router)
 # Include WebSocket router
 app.include_router(websocket_logs_router)
 
-# Static files (frontend)
-app.mount("/", StaticFiles(directory="web", html=True), name="static")
-
-
+# Health check endpoint (must be before static files mount)
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "APIKEY-king"}
+
+# Static files (frontend) - must be last
+app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 
 if __name__ == "__main__":

@@ -94,6 +94,17 @@
             display: none;
         }
 
+        /* Performance optimizations */
+        .will-change-scroll {
+            will-change: scroll-position;
+        }
+
+        /* 使用 GPU 加速 */
+        .log-item,
+        .spinner {
+            transform: translateZ(0);
+        }
+
         /* Dark Mode */
         .dark {
             background-color: hsl(222.2 84% 4.9%);

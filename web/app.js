@@ -344,11 +344,24 @@ function updateScanStatus(running, paused = false) {
 // Status Polling with optimization
 let statusInterval;
 let lastStatusUpdate = 0;
+let isPageVisible = true;
+
+// Page visibility detection
+document.addEventListener('visibilitychange', () => {
+    isPageVisible = !document.hidden;
+    if (isPageVisible) {
+        loadStatus(); // 立即更新
+    }
+});
 
 function startStatusPolling() {
     loadStatus();
-    // 降低轮询频率到5秒
-    statusInterval = setInterval(loadStatus, 5000);
+    // 降低轮询频率到5秒，页面不可见时暂停
+    statusInterval = setInterval(() => {
+        if (isPageVisible) {
+            loadStatus();
+        }
+    }, 5000);
 }
 
 async function loadStatus() {
@@ -401,48 +414,97 @@ function connectWebSocket() {
     // Batch process WebSocket messages
     let messageQueue = [];
     let processingQueue = false;
+    let lastProcessTime = 0;
 
     ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        messageQueue.push(message);
-        
-        if (!processingQueue) {
-            processingQueue = true;
-            requestAnimationFrame(() => {
-                processMessageQueue();
-                processingQueue = false;
-            });
+        try {
+            const message = JSON.parse(event.data);
+            messageQueue.push(message);
+            
+            // 批量处理：最多100ms处理一次
+            const now = Date.now();
+            if (!processingQueue && (messageQueue.length > 10 || now - lastProcessTime > 100)) {
+                processingQueue = true;
+                lastProcessTime = now;
+                requestAnimationFrame(() => {
+                    processMessageQueue();
+                    processingQueue = false;
+                });
+            }
+        } catch (e) {
+            console.error('WebSocket message parse error:', e);
         }
     };
 
     function processMessageQueue() {
-        while (messageQueue.length > 0) {
+        // 激进优化：每次最多处理5条消息
+        const batchSize = Math.min(messageQueue.length, 5);
+        
+        for (let i = 0; i < batchSize; i++) {
             const message = messageQueue.shift();
             
             if (message.event === 'log') {
-                addLogEntry(message.data);
+                // 跳过 info 类型日志以减少DOM操作
+                if (message.data.type !== 'info' || messageQueue.length < 5) {
+                    addLogEntry(message.data);
+                }
             } else if (message.event === 'history') {
-                // Only show last 50 logs from history
-                const recentLogs = message.data.slice(-50);
-                recentLogs.forEach(log => addLogEntry(log));
+                // 只显示最近20条历史日志
+                const recentLogs = message.data.slice(-20);
+                recentLogs.forEach(log => {
+                    if (log.type !== 'info') { // 跳过info日志
+                        addLogEntry(log);
+                    }
+                });
             } else if (message.event === 'stats') {
                 updateStats(message.data);
             }
         }
+        
+        // 如果还有很多消息，延迟处理
+        if (messageQueue.length > 0) {
+            setTimeout(() => {
+                if (messageQueue.length > 0) {
+                    requestAnimationFrame(() => processMessageQueue());
+                }
+            }, 200); // 增加延迟
+        }
     }
 
     ws.onclose = () => {
-        console.log('WebSocket disconnected, reconnecting in 3s...');
-        setTimeout(connectWebSocket, 3000);
+        console.log('WebSocket disconnected, reconnecting in 5s...');
+        setTimeout(() => {
+            if (isPageVisible) {
+                connectWebSocket();
+            }
+        }, 5000); // 增加重连间隔
     };
 
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        ws.close();
     };
 }
 
-// Optimized log entry with throttling
-const addLogEntry = window.perfUtils.throttle(function(log) {
+// 超级优化的日志添加 - 最多保留50条
+let logBuffer = [];
+let logUpdateScheduled = false;
+
+function addLogEntry(log) {
+    logBuffer.push(log);
+    
+    if (!logUpdateScheduled) {
+        logUpdateScheduled = true;
+        requestIdleCallback(() => {
+            flushLogBuffer();
+            logUpdateScheduled = false;
+        }, { timeout: 500 });
+    }
+}
+
+function flushLogBuffer() {
+    if (logBuffer.length === 0) return;
+    
     const container = document.getElementById('logsContainer');
     
     // Clear placeholder
@@ -450,46 +512,50 @@ const addLogEntry = window.perfUtils.throttle(function(log) {
         container.innerHTML = '';
     }
 
-    const logDiv = document.createElement('div');
-    logDiv.className = 'log-item flex gap-2';
-
-    const time = new Date(log.timestamp).toLocaleTimeString('zh-CN');
+    const fragment = document.createDocumentFragment();
     
-    let icon = '•';
-    let color = 'text-slate-600';
-    
-    if (log.type === 'success') {
-        icon = '✓';
-        color = 'text-success';
-    } else if (log.type === 'error') {
-        icon = '✗';
-        color = 'text-destructive';
-    } else if (log.type === 'warning') {
-        icon = '⚠';
-        color = 'text-amber-600';
-    } else if (log.type === 'info') {
-        icon = 'ℹ';
-        color = 'text-blue-600';
-    }
+    // 处理缓冲区中的日志
+    logBuffer.forEach(log => {
+        const time = new Date(log.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        
+        let icon = '•';
+        let color = 'text-slate-600';
+        
+        if (log.type === 'success') {
+            icon = '✓';
+            color = 'text-success';
+        } else if (log.type === 'error') {
+            icon = '✗';
+            color = 'text-destructive';
+        } else if (log.type === 'warning') {
+            icon = '⚠';
+            color = 'text-amber-600';
+        } else if (log.type === 'info') {
+            icon = 'ℹ';
+            color = 'text-blue-600';
+        }
 
-    logDiv.innerHTML = `
-        <span class="text-slate-400">[${time}]</span>
-        <span class="${color} font-bold">${icon}</span>
-        <span class="text-slate-700">${escapeHtml(log.message)}</span>
-    `;
-
-    container.appendChild(logDiv);
-    
-    // Use requestAnimationFrame for smooth scrolling
-    requestAnimationFrame(() => {
-        container.scrollTop = container.scrollHeight;
+        const logDiv = document.createElement('div');
+        logDiv.className = 'flex gap-2 text-xs';
+        logDiv.innerHTML = `<span class="text-slate-400">[${time}]</span><span class="${color}">${icon}</span><span>${escapeHtml(log.message)}</span>`;
+        
+        fragment.appendChild(logDiv);
     });
+    
+    container.appendChild(fragment);
+    logBuffer = [];
 
-    // Keep only last 200 logs (减少DOM数量)
-    while (container.children.length > 200) {
+    // 只保留最后50条日志
+    while (container.children.length > 50) {
         container.removeChild(container.firstChild);
     }
-}, 100);
+    
+    // 智能滚动：只在接近底部时自动滚动
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+    if (isNearBottom) {
+        container.scrollTop = container.scrollHeight;
+    }
+}
 
 function clearLogs() {
     const container = document.getElementById('logsContainer');
@@ -574,6 +640,7 @@ function initCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false, // 禁用所有动画
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -599,27 +666,49 @@ function initCharts() {
                     data: [],
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4,
-                    fill: true
+                    tension: 0.2, // 减少曲线复杂度
+                    fill: true,
+                    pointRadius: 0, // 不显示点，提升性能
+                    pointHoverRadius: 3
                 }, {
                     label: '有效密钥数',
                     data: [],
                     borderColor: 'rgb(34, 197, 94)',
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    tension: 0.4,
-                    fill: true
+                    tension: 0.2,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false, // 禁用所有动画
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { font: { size: 10 } }
+                        ticks: { 
+                            font: { size: 10 },
+                            maxTicksLimit: 5 // 减少刻度数量
+                        },
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
                     },
                     x: {
-                        ticks: { font: { size: 10 } }
+                        ticks: { 
+                            font: { size: 10 },
+                            maxTicksLimit: 8
+                        },
+                        grid: {
+                            display: false
+                        }
                     }
                 },
                 plugins: {
@@ -701,8 +790,17 @@ function displayKeys(keys) {
         return;
     }
 
-    tbody.innerHTML = keys.map((key, index) => `
-        <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-slate-100">
+    // 使用 DocumentFragment 提升性能
+    const fragment = document.createDocumentFragment();
+    
+    // 只显示前200条，避免DOM过多
+    const displayKeys = keys.slice(0, 200);
+    
+    displayKeys.forEach((key, index) => {
+        const tr = document.createElement('tr');
+        tr.className = index % 2 === 0 ? 'bg-white hover:bg-slate-100' : 'bg-slate-50/50 hover:bg-slate-100';
+        
+        tr.innerHTML = `
             <td class="px-3 py-2">
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded ${getKeyTypeBadge(key.type)}">
                     ${key.type.toUpperCase()}
@@ -720,8 +818,20 @@ function displayKeys(keys) {
                     复制
                 </button>
             </td>
-        </tr>
-    `).join('');
+        `;
+        
+        fragment.appendChild(tr);
+    });
+    
+    tbody.innerHTML = '';
+    tbody.appendChild(fragment);
+    
+    // 显示提示（如果有更多密钥）
+    if (keys.length > 200) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="5" class="px-3 py-2 text-center text-amber-600 text-xs">只显示前200条，请使用搜索和筛选功能查看更多</td>`;
+        tbody.appendChild(tr);
+    }
 }
 
 function getKeyTypeBadge(type) {

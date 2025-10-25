@@ -1,8 +1,6 @@
 # Docker Compose 配置 - 本地构建版本
 # 适用于开发和自定义构建
 
-version: '3.8'
-
 services:
   apikey-king:
     build:
