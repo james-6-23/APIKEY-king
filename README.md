@@ -12,10 +12,11 @@ APIKEY-king 是一个专业的 AI API 密钥安全扫描工具，支持 **4 大�
 
 ## ⚡ 快速开始
 
+### 方式一：使用预构建镜像（最快）
+
 ```bash
-# 1. 克隆项目
-git clone https://github.com/your-username/APIKEY-king.git
-cd APIKEY-king
+# 1. 拉取镜像
+docker pull ghcr.io/james-6-23/apikey-king:latest
 
 # 2. 启动服务
 docker-compose up -d
@@ -23,6 +24,22 @@ docker-compose up -d
 # 3. 访问 Web 界面
 浏览器打开: http://localhost:8000
 默认密码: kyx200328
+```
+
+### 方式二：本地构建
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/your-username/APIKEY-king.git
+cd APIKEY-king
+
+# 2. 修改 docker-compose.yml
+# 注释 image 行，取消注释 build 部分
+
+# 3. 构建并启动
+docker-compose up -d --build
+
+# 4. 访问: http://localhost:8000
 ```
 
 ---
@@ -329,8 +346,17 @@ docker-compose up -d
 
 ## 🐳 Docker 命令
 
+### 使用预构建镜像
+
 ```bash
+# 拉取最新镜像
+docker pull ghcr.io/james-6-23/apikey-king:latest
+
 # 启动服务
+docker-compose up -d
+
+# 更新镜像
+docker-compose pull
 docker-compose up -d
 
 # 查看日志
@@ -338,9 +364,17 @@ docker-compose logs -f
 
 # 停止服务
 docker-compose down
+```
 
-# 重新构建
+### 本地构建（开发用）
+
+```bash
+# 构建并启动
 docker-compose up -d --build
+
+# 强制重建
+docker-compose build --no-cache
+docker-compose up -d
 
 # 查看状态
 docker-compose ps
@@ -424,27 +458,37 @@ docker-compose restart
 
 ## 🤖 GitHub Actions 自动构建
 
-项目已配置 GitHub Actions，推送代码时自动构建 Docker 镜像。
+项目已配置 GitHub Actions，自动构建并推送 Docker 镜像到 GitHub Container Registry。
 
 **构建配置：**
-- 架构：仅 linux/amd64
-- Dockerfile：单一 `Dockerfile`
-- 优化：多层缓存，快速构建
+- 📦 仓库：`ghcr.io/james-6-23/apikey-king`
+- 🏗️ 架构：linux/amd64
+- 📄 Dockerfile：单一优化的 `Dockerfile`
+- ⚡ 优化：多层缓存，快速构建
 
-**使用方式：**
+**自动触发：**
+- 推送到 main/master 分支
+- 创建版本标签（v*）
+
+**使用预构建镜像：**
 
 ```bash
-# 推送触发自动构建
-git push origin main
+# 直接拉取使用（推荐）
+docker pull ghcr.io/james-6-23/apikey-king:latest
+docker-compose up -d
 
-# 发布版本（自动构建标签）
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin v1.0.0
-
-# 拉取并使用镜像
-docker pull ghcr.io/your-username/apikey-king:latest
-docker run -d -p 8000:8000 -v $(pwd)/data:/app/data ghcr.io/your-username/apikey-king:latest
+# 或单独运行
+docker run -d \
+  --name apikey-king \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/james-6-23/apikey-king:latest
 ```
+
+**可用标签：**
+- `latest` - 最新版本
+- `main` - main 分支最新构建
+- `v1.0.0` - 版本标签
 
 ---
 

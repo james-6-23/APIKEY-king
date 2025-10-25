@@ -1,15 +1,13 @@
+# Docker Compose 配置 - 本地构建版本
+# 适用于开发和自定义构建
+
 version: '3.8'
 
 services:
   apikey-king:
-    # 使用预构建镜像（推荐）
-    image: ghcr.io/james-6-23/apikey-king:latest
-    
-    # 或者本地构建（取消下面的注释，注释上面的 image）
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
-    
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: apikey-king
     restart: unless-stopped
     ports:
@@ -24,3 +22,4 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
