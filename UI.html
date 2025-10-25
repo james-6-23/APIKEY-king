@@ -1,0 +1,1169 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DuckCoding API令牌额度查询工具">
+    <meta name="referrer" content="no-referrer">
+    <title>DuckCoding 令牌额度查询</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(214.3 31.8% 91.4%)",
+                        input: "hsl(214.3 31.8% 91.4%)",
+                        ring: "hsl(222.2 84% 4.9%)",
+                        background: "hsl(0 0% 100%)",
+                        foreground: "hsl(222.2 84% 4.9%)",
+                        primary: {
+                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(222.2 47.4% 11.2%)",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(215.4 16.3% 46.9%)",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(222.2 47.4% 11.2%)",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(0 84.2% 60.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        success: {
+                            DEFAULT: "hsl(142.1 76.2% 36.3%)",
+                            foreground: "hsl(355.7 100% 97.3%)",
+                        },
+                    },
+                    borderRadius: {
+                        lg: "var(--radius)",
+                        md: "calc(var(--radius) - 2px)",
+                        sm: "calc(var(--radius) - 4px)",
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --radius: 0.5rem;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .animate-in {
+            animation: slideUpAndFade 0.4s ease-out;
+        }
+
+        @keyframes slideUpAndFade {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+
+        .card-hover:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: hsl(210 40% 96.1%);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: hsl(215.4 16.3% 46.9%);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: hsl(215.4 16.3% 36.9%);
+        }
+
+        /* Query button active state */
+        .query-btn.active {
+            background: hsl(222.2 47.4% 8%) !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="text-center mb-12 animate-in">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <svg class="w-12 h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+                <h1 class="text-4xl font-bold text-slate-900">DuckCoding 令牌额度查询</h1>
+            </div>
+            <p class="text-slate-600 text-lg mb-2">安全便捷地查询您的API令牌使用情况</p>
+            <a href="https://duckcoding.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors text-sm font-medium">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                访问 DuckCoding 官网
+            </a>
+        </div>
+
+        <!-- User Query Card -->
+        <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-6 animate-in">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold text-slate-900 mb-4">查询我的令牌</h2>
+
+                <!-- Input Group -->
+                <div class="mb-4">
+                    <input
+                        type="text"
+                        id="userToken"
+                        placeholder="请输入您的令牌 (如: sk-xxx...)"
+                        class="w-full px-4 py-2.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent font-mono"
+                    />
+                </div>
+
+                <!-- Query Buttons -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <label for="logDays" class="text-sm font-medium text-amber-900">日志查询范围：</label>
+                        <select id="logDays" class="px-3 py-1.5 text-sm border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium text-amber-900">
+                            <option value="1" selected>近1天</option>
+                            <option value="3">近3天</option>
+                            <option value="7">近7天</option>
+                        </select>
+                        <span class="text-xs text-amber-700 ml-auto hidden sm:inline">⚡ 仅影响调用日志查询</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <button
+                            id="btn-custom"
+                            onclick="queryUserToken('custom')"
+                            class="query-btn px-4 py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring flex items-center justify-center gap-2 transition-all duration-200"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            查询额度
+                        </button>
+                        <button
+                            id="btn-usage"
+                            onclick="queryUserToken('usage')"
+                            class="query-btn px-4 py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring flex items-center justify-center gap-2 transition-all duration-200"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                            </svg>
+                            使用情况
+                        </button>
+                        <button
+                            id="btn-logs"
+                            onclick="queryUserToken('logs')"
+                            class="query-btn px-4 py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring flex items-center justify-center gap-2 transition-all duration-200"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            调用日志
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Result Box -->
+                <div id="resultBox" class="hidden"></div>
+            </div>
+        </div>
+
+        <!-- User Benefits Card -->
+        <div class="bg-white rounded-lg border border-slate-200 shadow-sm animate-in">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-semibold text-slate-900 mb-2">用户福利</h2>
+                        <p class="text-sm text-slate-600">专为DuckCoding用户提供的免费API令牌，请合理使用</p>
+                    </div>
+                    <div class="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-amber-800">请勿滥用</span>
+                    </div>
+                </div>
+
+                <!-- 使用须知 -->
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-blue-900">
+                            <p class="font-semibold mb-1">使用须知</p>
+                            <ul class="space-y-1 text-blue-800">
+                                <li>• 这些令牌为DuckCoding用户免费提供，额度有限，不定期发放</li>
+                                <li>• 请根据令牌标注的用途使用（如：仅用于Claude Code等）</li>
+                                <li>• 恶意消耗或滥用将导致账户封禁或服务关闭，影响所有用户</li>
+                                <li>• 请珍惜资源，让更多人受益</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="freeTokens" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- Footer with Security Notice -->
+        <div class="mt-12 px-6 py-8 bg-white rounded-lg border border-slate-200 shadow-sm">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <span class="text-base font-semibold text-slate-900">安全提示</span>
+                </div>
+
+                <div class="space-y-3 text-sm text-slate-600 text-center">
+                    <p class="flex items-center justify-center gap-2 text-success">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                        <strong>所有令牌仅保存在您的浏览器本地，不会上传到任何服务器</strong>
+                    </p>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 text-center">
+                    &copy; 2025 <a href="https://duckcoding.com" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-primary/80 font-medium transition-colors">DuckCoding</a>. All rights reserved.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <script>
+        const API_URL = 'https://jp.duckcoding.com/api/usage/token';
+        const API_ENDPOINTS = {
+            custom: 'https://jp.duckcoding.com/api/usage/token',
+            usage: 'https://jp.duckcoding.com/v1/dashboard/billing/usage',
+            logs: 'https://jp.duckcoding.com/api/log/token'
+        };
+        const STORAGE_KEY = 'token_query_history';
+        const QUOTA_CONVERSION_RATE = 500000;
+
+        // 配置
+        const CONFIG = {
+            MAX_HISTORY_COUNT: 5,               // 最多保存5条历史记录
+            QUERY_RATE_LIMIT: 1000,             // 查询间隔限制（毫秒）
+        };
+
+        // 查询节流控制
+        let lastQueryTime = 0;
+
+        const freeTokens = [
+            {
+                name: 'Claude Code 专用福利',
+                token: 'sk-SfalOhlFXc7NsvePi8zK8Y6Kv0IXfAyBZntkyIoW4XJvcXwb',
+                description: '专为 Claude Code 用户提供'
+            },
+            {
+                name: 'CodeX 专用福利',
+                token: 'sk-7N1UU8CqWu6Y7kMTR92rUWFD8ormGXx9RCq402Xz1mzDNnwn',
+                description: '专为 CodeX 用户提供'
+            },
+            {
+                name: 'Gemini CLI 专用福利',
+                token: 'sk-6zKW4T7Tl4da3uVhZmOQSuMsVrHFe7FKvOQ4Rpi8BA64q9hb',
+                description: '专为 Gemini CLI 用户提供'
+            },
+        ];
+
+        // 令牌可见状态管理
+        const tokenVisibility = new Map();
+
+        // 页面加载时初始化
+        window.onload = function() {
+            // 加载免费令牌卡片（不自动查询）
+            loadFreeTokens();
+        };
+
+        // 输入验证和清理
+        function validateAndSanitizeToken(token) {
+            // 移除首尾空白
+            token = token.trim();
+
+            // 检查是否为空
+            if (!token) {
+                throw new Error('令牌不能为空');
+            }
+
+            // 检查长度（假设令牌长度在20-100之间）
+            if (token.length < 20 || token.length > 100) {
+                throw new Error('令牌格式不正确');
+            }
+
+            // 检查是否包含危险字符
+            if (/<|>|"|'|script|javascript|eval|onclick|onerror/i.test(token)) {
+                throw new Error('令牌包含非法字符');
+            }
+
+            // 检查是否符合sk-开头的格式（根据实际情况调整）
+            if (!token.startsWith('sk-')) {
+                throw new Error('令牌必须以 sk- 开头');
+            }
+
+            return token;
+        }
+
+        // Format quota to CNY
+        function formatQuota(quota) {
+            const yuan = quota / QUOTA_CONVERSION_RATE;
+            return `¥${yuan.toFixed(2)}`;
+        }
+
+        // Format quota with higher precision for logs
+        function formatQuotaPrecise(quota, digits = 6) {
+            const yuan = quota / QUOTA_CONVERSION_RATE;
+            return `¥${yuan.toFixed(digits)}`;
+        }
+
+        // 获取友好的接口名称
+        function getFriendlyEndpointName(endpointType) {
+            const names = {
+                'custom': '查询额度',
+                'usage': '使用情况',
+                'logs': '调用日志'
+            };
+            return names[endpointType] || endpointType;
+        }
+
+        // 格式化时间戳
+        function renderTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        // 导出日志为CSV
+        function exportLogsCSV(logs, filename = 'api-logs.csv') {
+            if (!logs || logs.length === 0) {
+                showToast('没有可导出的数据', 'error');
+                return;
+            }
+
+            const csvData = logs.map(log => {
+                // 解析 other 字段获取缓存信息
+                let cacheInfo = {
+                    cache_creation_tokens: '-',
+                    cache_tokens: '-'
+                };
+                if (log.other) {
+                    try {
+                        const otherData = typeof log.other === 'string' ? JSON.parse(log.other) : log.other;
+                        if (otherData.cache_creation_tokens !== undefined) cacheInfo.cache_creation_tokens = otherData.cache_creation_tokens;
+                        if (otherData.cache_tokens !== undefined) cacheInfo.cache_tokens = otherData.cache_tokens;
+                    } catch (e) {
+                        console.error('Failed to parse other field:', e);
+                    }
+                }
+
+                return {
+                    '时间': renderTimestamp(log.created_at),
+                    '令牌名称': log.token_name || '-',
+                    '模型': log.model_name || '-',
+                    '用时': log.use_time !== undefined && log.use_time !== null ? `${log.use_time}秒` : '-',
+                    '提示': log.prompt_tokens !== undefined && log.prompt_tokens !== null ? log.prompt_tokens : '-',
+                    '补全': log.completion_tokens !== undefined && log.completion_tokens !== null ? log.completion_tokens : '-',
+                    '缓存创建Token': cacheInfo.cache_creation_tokens,
+                    '缓存读取Token': cacheInfo.cache_tokens,
+                    '花费': formatQuotaPrecise(log.quota || 0, 6),
+                    '详情': log.content || '-'
+                };
+            });
+
+            const csvString = '\ufeff' + Papa.unparse(csvData);
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('CSV文件已导出', 'success');
+        }
+
+        // 创建日志表格显示
+        function createLogsTable(logs) {
+            if (!Array.isArray(logs) || logs.length === 0) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'text-center text-slate-500 py-8';
+                emptyDiv.textContent = '暂无日志数据';
+                return emptyDiv;
+            }
+
+            // 按时间倒序排列（最新的在前）
+            const sortedLogs = [...logs].sort((a, b) => b.created_at - a.created_at);
+
+            const container = document.createElement('div');
+            container.className = 'bg-white rounded border border-slate-200 overflow-hidden';
+
+            // 7天日志保留提示
+            const noticeDiv = document.createElement('div');
+            noticeDiv.className = 'p-3 bg-blue-50 border-b border-blue-200 flex items-start gap-2';
+            noticeDiv.innerHTML = `
+                <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="text-xs text-blue-800">数据库每7天滚动清理，仅显示最近7天内的调用日志</span>
+            `;
+
+            // 表格头部 - 添加导出按钮
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center p-3 bg-slate-50 border-b border-slate-200';
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'text-sm text-slate-600';
+            countSpan.textContent = `共 ${logs.length} 条记录`;
+
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring flex items-center gap-1.5';
+            exportBtn.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span>导出CSV</span>
+            `;
+            exportBtn.addEventListener('click', () => exportLogsCSV(sortedLogs));
+
+            header.appendChild(countSpan);
+            header.appendChild(exportBtn);
+
+            // 表格容器（带滚动）
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'overflow-x-auto max-h-96 custom-scrollbar';
+
+            const table = document.createElement('table');
+            table.className = 'w-full text-xs';
+
+            // 表头
+            const thead = document.createElement('thead');
+            thead.className = 'bg-slate-50 sticky top-0 z-10';
+            thead.innerHTML = `
+                <tr class="border-b-2 border-slate-300">
+                    <th class="px-3 py-3 text-left font-semibold text-slate-800 bg-slate-100">时间</th>
+                    <th class="px-3 py-3 text-left font-semibold text-slate-800 bg-slate-100">令牌名称</th>
+                    <th class="px-3 py-3 text-left font-semibold text-slate-800 bg-slate-100">模型</th>
+                    <th class="px-3 py-3 text-center font-semibold text-slate-800 bg-slate-100">用时</th>
+                    <th class="px-3 py-3 text-center font-semibold text-slate-800 bg-slate-100">提示</th>
+                    <th class="px-3 py-3 text-center font-semibold text-slate-800 bg-slate-100">补全</th>
+                    <th class="px-3 py-3 text-center font-semibold text-slate-800 bg-slate-100">缓存创建Token</th>
+                    <th class="px-3 py-3 text-center font-semibold text-slate-800 bg-slate-100">缓存读取Token</th>
+                    <th class="px-3 py-3 text-right font-semibold text-slate-800 bg-slate-100">花费</th>
+                    <th class="px-3 py-3 text-left font-semibold text-slate-800 bg-slate-100">详情</th>
+                </tr>
+            `;
+
+            // 表体
+            const tbody = document.createElement('tbody');
+            tbody.className = 'divide-y divide-slate-100';
+
+            sortedLogs.forEach((log, index) => {
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 0 ? 'bg-white hover:bg-slate-50 transition-colors' : 'bg-slate-50/50 hover:bg-slate-100 transition-colors';
+
+                // 解析 other 字段获取缓存信息
+                let cacheInfo = {
+                    cache_creation_tokens: '-',
+                    cache_tokens: '-'
+                };
+                if (log.other) {
+                    try {
+                        const otherData = typeof log.other === 'string' ? JSON.parse(log.other) : log.other;
+                        if (otherData.cache_creation_tokens !== undefined) cacheInfo.cache_creation_tokens = otherData.cache_creation_tokens;
+                        if (otherData.cache_tokens !== undefined) cacheInfo.cache_tokens = otherData.cache_tokens;
+                    } catch (e) {
+                        console.error('Failed to parse other field:', e);
+                    }
+                }
+
+                const timeTd = document.createElement('td');
+                timeTd.className = 'px-3 py-2 text-slate-600 whitespace-nowrap text-xs';
+                timeTd.textContent = renderTimestamp(log.created_at);
+
+                const tokenNameTd = document.createElement('td');
+                tokenNameTd.className = 'px-3 py-2 text-slate-700 font-mono text-[10px]';
+                tokenNameTd.textContent = log.token_name || '-';
+
+                const modelTd = document.createElement('td');
+                modelTd.className = 'px-3 py-2 text-slate-700 font-mono text-[10px]';
+                modelTd.textContent = log.model_name || '-';
+
+                const timeCostTd = document.createElement('td');
+                timeCostTd.className = 'px-3 py-2 text-center text-slate-600 text-xs';
+                timeCostTd.textContent = log.use_time !== undefined && log.use_time !== null ? `${log.use_time}秒` : '-';
+
+                const promptTd = document.createElement('td');
+                promptTd.className = 'px-3 py-2 text-center text-slate-600 text-xs';
+                promptTd.textContent = log.prompt_tokens !== undefined && log.prompt_tokens !== null ? log.prompt_tokens : '-';
+
+                const completionTd = document.createElement('td');
+                completionTd.className = 'px-3 py-2 text-center text-slate-600 text-xs';
+                completionTd.textContent = log.completion_tokens !== undefined && log.completion_tokens !== null ? log.completion_tokens : '-';
+
+                // 缓存创建Token
+                const cacheCreationTokensTd = document.createElement('td');
+                cacheCreationTokensTd.className = 'px-3 py-2 text-center text-slate-600 text-xs';
+                cacheCreationTokensTd.textContent = cacheInfo.cache_creation_tokens;
+
+                // 缓存读取Token
+                const cacheTokensTd = document.createElement('td');
+                cacheTokensTd.className = 'px-3 py-2 text-center text-slate-600 text-xs';
+                cacheTokensTd.textContent = cacheInfo.cache_tokens;
+
+                const quotaTd = document.createElement('td');
+                quotaTd.className = 'px-3 py-2 text-right text-slate-700 font-semibold text-xs';
+                quotaTd.textContent = formatQuotaPrecise(log.quota || 0, 6);
+
+                const contentTd = document.createElement('td');
+                contentTd.className = 'px-3 py-2 text-slate-600 max-w-xs truncate text-xs';
+                contentTd.textContent = log.content || '-';
+                contentTd.title = log.content || '-'; // 鼠标悬停显示完整内容
+
+                tr.appendChild(timeTd);
+                tr.appendChild(tokenNameTd);
+                tr.appendChild(modelTd);
+                tr.appendChild(timeCostTd);
+                tr.appendChild(promptTd);
+                tr.appendChild(completionTd);
+                tr.appendChild(cacheCreationTokensTd);
+                tr.appendChild(cacheTokensTd);
+                tr.appendChild(quotaTd);
+                tr.appendChild(contentTd);
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableWrapper.appendChild(table);
+
+            container.appendChild(noticeDiv);
+            container.appendChild(header);
+            container.appendChild(tableWrapper);
+
+            return container;
+        }
+
+        // HTML转义函数，防止XSS攻击
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // 安全地转义属性值（用于onclick等属性）
+        function escapeAttribute(text) {
+            return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            const bgColor = type === 'success' ? 'bg-success' : 'bg-destructive';
+            const iconSvg = type === 'success'
+                ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+                : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+            toast.className = `toast ${bgColor} text-white px-4 py-3 rounded-md shadow-lg flex items-center gap-3 max-w-md`;
+
+            // 安全地设置消息内容
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'text-sm font-medium';
+            messageSpan.textContent = message; // 使用textContent防止XSS
+
+            toast.innerHTML = iconSvg;
+            toast.appendChild(messageSpan);
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideInRight 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Copy text to clipboard
+        async function copyToClipboard(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    showToast('复制成功', 'success');
+                    return true;
+                }
+
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    textArea.remove();
+                    showToast('复制成功', 'success');
+                    return true;
+                } catch (err) {
+                    textArea.remove();
+                    showToast('复制失败，请手动复制', 'error');
+                    return false;
+                }
+            } catch (err) {
+                showToast('复制失败，请手动复制', 'error');
+                return false;
+            }
+        }
+
+        // 查询用户输入的令牌
+        async function queryUserToken(endpointType) {
+            const tokenInput = document.getElementById('userToken').value.trim();
+            const resultBox = document.getElementById('resultBox');
+
+            if (!tokenInput) {
+                showToast('请输入令牌', 'error');
+                return;
+            }
+
+            // 更新按钮选中状态
+            document.querySelectorAll('.query-btn').forEach(btn => btn.classList.remove('active'));
+            const btnMap = { 'custom': 'btn-custom', 'usage': 'btn-usage', 'logs': 'btn-logs' };
+            const activeBtn = document.getElementById(btnMap[endpointType]);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // 查询节流控制
+            const now = Date.now();
+            if (now - lastQueryTime < CONFIG.QUERY_RATE_LIMIT) {
+                showToast('请求过于频繁，请稍后再试', 'error');
+                return;
+            }
+            lastQueryTime = now;
+
+            try {
+                // 输入验证
+                const sanitizedToken = validateAndSanitizeToken(tokenInput);
+
+                resultBox.classList.remove('hidden');
+                resultBox.innerHTML = `
+                    <div class="border border-slate-200 bg-slate-50 rounded-md p-4 text-center">
+                        <div class="spinner inline-block mr-2"></div>
+                        <span class="text-sm text-slate-600">正在查询${getFriendlyEndpointName(endpointType)}...</span>
+                    </div>
+                `;
+
+                let url, headers = {
+                    'Authorization': `Bearer ${sanitizedToken}`,
+                    'Accept': '*/*'
+                };
+
+                // 根据接口类型构建URL
+                switch(endpointType) {
+                    case 'custom':
+                        url = API_ENDPOINTS.custom;
+                        break;
+                    case 'usage':
+                        const now = new Date();
+                        const start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
+                        const start_date = `${start.getFullYear()}-${start.getMonth() + 1}-${start.getDate()}`;
+                        const end_date = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+                        url = `${API_ENDPOINTS.usage}?start_date=${start_date}&end_date=${end_date}`;
+                        break;
+                    case 'logs':
+                        url = `${API_ENDPOINTS.logs}?key=${sanitizedToken}`;
+                        delete headers['Authorization'];
+                        break;
+                }
+
+                console.log(`用户查询接口: ${endpointType}, URL: ${url}`);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: headers
+                });
+
+                const text = await response.text();
+                console.log(`接口响应 (${endpointType}):`, response.status, text);
+
+                // 处理各种HTTP错误
+                if (response.status === 429) {
+                    throw new Error('请求过于频繁，请稍后重试');
+                }
+
+                if (response.status === 502) {
+                    throw new Error('服务器网关错误（502），后端服务暂时不可用');
+                }
+
+                if (response.status === 503) {
+                    throw new Error('服务暂时不可用（503）');
+                }
+
+                if (response.status >= 500) {
+                    throw new Error(`服务器错误（${response.status}）`);
+                }
+
+                if (!text) {
+                    throw new Error('服务器返回空响应');
+                }
+
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('服务器返回格式错误');
+                }
+
+                // 显示结果
+                displayUserQueryResult(result, endpointType, response.status, sanitizedToken);
+
+            } catch (error) {
+                console.error('用户查询错误:', error);
+
+                let errorMsg = error.message;
+                if (errorMsg === 'Failed to fetch') {
+                    errorMsg = '网络错误，请检查您的网络连接';
+                } else if (error.name === 'TypeError') {
+                    errorMsg = '请求失败，请稍后重试';
+                }
+
+                resultBox.classList.remove('hidden');
+                resultBox.innerHTML = `
+                    <div class="border border-destructive/20 bg-destructive/5 rounded-md p-4">
+                        <div class="font-bold text-destructive mb-2">❌ ${endpointType.toUpperCase()} 接口错误</div>
+                        <div class="text-sm text-slate-600">${escapeHtml(errorMsg)}</div>
+                    </div>
+                `;
+                showToast(errorMsg, 'error');
+            }
+        }
+
+        // 显示用户查询结果
+        function displayUserQueryResult(data, endpointType, statusCode, token) {
+            const resultBox = document.getElementById('resultBox');
+
+            resultBox.classList.remove('hidden');
+            resultBox.classList.add('animate-in', 'mt-4');
+
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'border border-success/20 bg-success/5 rounded-md p-4';
+
+            const title = document.createElement('div');
+            title.className = 'font-bold text-success mb-3 flex items-center gap-2';
+            title.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>✅ ${getFriendlyEndpointName(endpointType)}</span>
+            `;
+
+            resultDiv.appendChild(title);
+
+            // 特殊处理custom接口，显示美观的额度信息
+            if (endpointType === 'custom' && data.data && (data.data.total_granted !== undefined || data.data.unlimited_quota !== undefined)) {
+                const tokenData = data.data;
+                const totalGranted = tokenData.total_granted || 0;
+                const totalUsed = tokenData.total_used || 0;
+                const totalAvailable = tokenData.total_available || 0;
+                const tokenName = escapeHtml(tokenData.name || '未命名');
+                const isUnlimited = tokenData.unlimited_quota === true;
+                const usagePercent = !isUnlimited && totalGranted > 0 ? ((totalUsed / totalGranted) * 100).toFixed(1) : 0;
+
+                // 格式化显示
+                const grantedDisplay = isUnlimited ? '<span class="text-primary font-bold">∞ 无限额度</span>' : formatQuota(totalGranted);
+                const availableDisplay = isUnlimited ? '<span class="text-primary font-bold">∞ 无限额度</span>' : formatQuota(totalAvailable);
+                const usedDisplay = isUnlimited
+                    ? formatQuota(totalUsed)
+                    : `${formatQuota(totalUsed)}`;
+
+                const quotaInfo = document.createElement('div');
+                quotaInfo.className = 'space-y-3 bg-white p-4 rounded border border-slate-200';
+
+                // 进度条HTML
+                const progressBarHtml = isUnlimited
+                    ? '<div class="flex items-center justify-center py-2 text-primary font-semibold text-sm">✨ 无限额度</div>'
+                    : `<div class="space-y-2 pt-2">
+                        <div class="flex justify-between items-center text-xs text-slate-600">
+                            <span>使用进度</span>
+                            <span class="font-semibold ${usagePercent > 80 ? 'text-destructive' : usagePercent > 50 ? 'text-orange-600' : 'text-success'}">${usagePercent}%</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="${usagePercent > 80 ? 'bg-destructive' : usagePercent > 50 ? 'bg-orange-500' : 'bg-success'} h-full rounded-full transition-all duration-500" style="width: ${usagePercent}%"></div>
+                        </div>
+                    </div>`;
+
+                quotaInfo.innerHTML = `
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">令牌名称</span>
+                        <span class="text-sm font-semibold text-slate-900">${tokenName}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">总额度</span>
+                        <span class="text-sm font-semibold text-slate-900">${grantedDisplay}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">已使用</span>
+                        <span class="text-sm font-semibold ${!isUnlimited && usagePercent > 80 ? 'text-destructive' : 'text-orange-600'}">
+                            ${usedDisplay}
+                            ${!isUnlimited ? `<span class="text-xs text-slate-500 ml-1">(${usagePercent}%)</span>` : ''}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">剩余额度</span>
+                        <span class="text-lg font-bold ${isUnlimited || totalAvailable > totalGranted * 0.2 ? 'text-success' : 'text-destructive'}">
+                            ${availableDisplay}
+                        </span>
+                    </div>
+                    ${progressBarHtml}
+                `;
+
+                resultDiv.appendChild(quotaInfo);
+            } else if (endpointType === 'usage' && data.total_usage !== undefined) {
+                const consumedQuota = (data.total_usage / 100).toFixed(2);
+
+                const usageInfo = document.createElement('div');
+                usageInfo.className = 'space-y-3 bg-white p-4 rounded border border-slate-200 mb-3';
+
+                const quotaDiv = document.createElement('div');
+                quotaDiv.className = 'flex justify-between items-center';
+                quotaDiv.innerHTML = `
+                    <span class="text-sm font-medium text-slate-600">累计消耗额度</span>
+                    <span class="font-bold text-xl text-orange-600">¥${consumedQuota}</span>
+                `;
+
+                usageInfo.appendChild(quotaDiv);
+                resultDiv.appendChild(usageInfo);
+            } else if (endpointType === 'logs' && Array.isArray(data.data)) {
+                // 特殊处理logs接口，显示表格
+                // 根据用户选择的天数过滤日志
+                const logDays = parseInt(document.getElementById('logDays').value) || 1;
+                const cutoffTime = Math.floor(Date.now() / 1000) - (logDays * 24 * 3600);
+                const filteredLogs = data.data.filter(log => log.created_at >= cutoffTime);
+
+                const logsTable = createLogsTable(filteredLogs);
+                resultDiv.appendChild(logsTable);
+            }
+
+            resultBox.innerHTML = '';
+            resultBox.appendChild(resultDiv);
+
+            showToast('查询成功', 'success');
+        }
+
+        // 显示查询结果（提取出来避免重复代码）
+        function displayResult(tokenData, tokenInput, isFromHistory) {
+            const totalGranted = tokenData.total_granted || 0;
+            const totalUsed = tokenData.total_used || 0;
+            const totalAvailable = tokenData.total_available || 0;
+            const tokenName = escapeHtml(tokenData.name || '未命名');
+            const isUnlimited = tokenData.unlimited_quota === true;
+            const usagePercent = !isUnlimited && totalGranted > 0 ? ((totalUsed / totalGranted) * 100).toFixed(1) : 0;
+
+            // 格式化显示
+            const grantedDisplay = isUnlimited ? '<span class="text-primary">∞ 无限额度</span>' : formatQuota(totalGranted);
+            const availableDisplay = isUnlimited ? '<span class="text-primary">∞ 无限额度</span>' : formatQuota(totalAvailable);
+            const usedDisplay = isUnlimited
+                ? formatQuota(totalUsed)
+                : `${formatQuota(totalUsed)} <span class="text-xs text-slate-500">(${usagePercent}%)</span>`;
+
+            const resultHTML = `
+                <div class="border border-success/20 bg-success/5 rounded-md p-4 space-y-3">
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">令牌名称</span>
+                        <span class="text-sm font-semibold text-slate-900">${tokenName}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">状态</span>
+                        <span class="text-sm font-semibold text-success flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            查询成功
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">总额度</span>
+                        <span class="text-sm font-semibold text-slate-900">${grantedDisplay}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-slate-200">
+                        <span class="text-sm font-medium text-slate-600">已使用</span>
+                        <span class="text-sm font-semibold ${!isUnlimited && usagePercent > 80 ? 'text-destructive' : 'text-orange-600'}">
+                            ${usedDisplay}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-slate-600">剩余额度</span>
+                        <span class="text-lg font-bold ${isUnlimited || totalAvailable > totalGranted * 0.2 ? 'text-success' : 'text-destructive'}">
+                            ${availableDisplay}
+                        </span>
+                    </div>
+                </div>
+            `;
+            showResult(resultHTML, 'success');
+        }
+
+        // Show query result
+        function showResult(content, type) {
+            const resultBox = document.getElementById('resultBox');
+
+            if (type === 'error') {
+                // 安全地创建错误消息，防止XSS
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'border border-destructive/20 bg-destructive/5 rounded-md p-4 text-sm text-destructive';
+                errorDiv.textContent = content;
+
+                resultBox.innerHTML = '';
+                resultBox.appendChild(errorDiv);
+            } else {
+                resultBox.innerHTML = content;
+            }
+
+            resultBox.classList.remove('hidden');
+            resultBox.classList.add('animate-in', 'mt-4');
+        }
+
+        // Load free tokens
+        async function loadFreeTokens() {
+            const container = document.getElementById('freeTokens');
+
+            if (freeTokens.length === 0) {
+                container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-8 col-span-full">暂无福利令牌</p>';
+                return;
+            }
+
+            // 使用DOM方法创建元素，避免XSS
+            container.innerHTML = '';
+            freeTokens.forEach((item, index) => {
+                // 初始化为隐藏状态
+                tokenVisibility.set(index, false);
+
+                const card = document.createElement('div');
+                card.className = 'border border-slate-200 rounded-lg p-4 card-hover bg-gradient-to-br from-slate-50 to-white';
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'mb-3';
+
+                const title = document.createElement('h3');
+                title.className = 'font-semibold text-slate-900 mb-1';
+                title.textContent = item.name;
+
+                const desc = document.createElement('p');
+                desc.className = 'text-xs text-slate-500';
+                desc.textContent = item.description;
+
+                header.appendChild(title);
+                header.appendChild(desc);
+
+                // Token display container
+                const tokenContainer = document.createElement('div');
+                tokenContainer.className = 'bg-slate-100 rounded p-2.5 mb-3 border border-slate-200 relative';
+                tokenContainer.id = `token-container-${index}`;
+
+                // 隐藏状态的占位符
+                const hiddenText = document.createElement('div');
+                hiddenText.id = `token-hidden-${index}`;
+                hiddenText.className = 'text-xs font-mono text-slate-500 text-center py-2';
+                hiddenText.textContent = '••••••••••••••••••••••••';
+
+                // 实际令牌（初始隐藏）
+                const tokenText = document.createElement('p');
+                tokenText.id = `token-visible-${index}`;
+                tokenText.className = 'text-xs font-mono text-slate-700 break-all leading-relaxed hidden';
+                tokenText.textContent = item.token;
+
+                tokenContainer.appendChild(hiddenText);
+                tokenContainer.appendChild(tokenText);
+
+                // Actions
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex gap-2 mb-3';
+
+                // 显示/隐藏按钮
+                const toggleBtn = document.createElement('button');
+                toggleBtn.id = `toggle-btn-${index}`;
+                toggleBtn.className = 'flex-1 px-3 py-2 text-xs font-medium bg-slate-200 text-slate-700 rounded hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-ring flex items-center justify-center gap-1.5';
+                toggleBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    <span>显示令牌</span>
+                `;
+                toggleBtn.addEventListener('click', () => toggleTokenVisibility(index));
+
+                // 复制按钮
+                const copyBtn = document.createElement('button');
+                copyBtn.id = `copy-btn-${index}`;
+                copyBtn.className = 'flex-1 px-3 py-2 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring flex items-center justify-center gap-1.5';
+                copyBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span id="copy-text-${index}">复制</span>
+                `;
+                copyBtn.addEventListener('click', () => copyTokenBtn(item.token, index));
+
+                actionsDiv.appendChild(toggleBtn);
+                actionsDiv.appendChild(copyBtn);
+
+                card.appendChild(header);
+                card.appendChild(tokenContainer);
+                card.appendChild(actionsDiv);
+
+                container.appendChild(card);
+            });
+        }
+
+        // 切换令牌可见性
+        function toggleTokenVisibility(index) {
+            const isVisible = tokenVisibility.get(index);
+            const hiddenEl = document.getElementById(`token-hidden-${index}`);
+            const visibleEl = document.getElementById(`token-visible-${index}`);
+            const toggleBtn = document.getElementById(`toggle-btn-${index}`);
+
+            if (isVisible) {
+                // 隐藏令牌
+                hiddenEl.classList.remove('hidden');
+                visibleEl.classList.add('hidden');
+                toggleBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    <span>显示令牌</span>
+                `;
+                tokenVisibility.set(index, false);
+            } else {
+                // 显示令牌
+                hiddenEl.classList.add('hidden');
+                visibleEl.classList.remove('hidden');
+                toggleBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                    </svg>
+                    <span>隐藏令牌</span>
+                `;
+                tokenVisibility.set(index, true);
+
+                // 显示提醒
+                showToast('请合理使用福利令牌，避免恶意消耗', 'success');
+            }
+        }
+
+        // Copy token with feedback
+        async function copyTokenBtn(token, index) {
+            const copyBtn = document.getElementById(`copy-btn-${index}`);
+            const copyTextEl = document.getElementById(`copy-text-${index}`);
+
+            const success = await copyToClipboard(token);
+
+            if (success && copyTextEl) {
+                const originalText = copyTextEl.textContent;
+                copyTextEl.textContent = '已复制';
+                copyBtn.classList.add('bg-success');
+                copyBtn.classList.remove('bg-primary');
+
+                setTimeout(() => {
+                    copyTextEl.textContent = originalText;
+                    copyBtn.classList.remove('bg-success');
+                    copyBtn.classList.add('bg-primary');
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

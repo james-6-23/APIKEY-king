@@ -1,433 +1,537 @@
 # 🔑 APIKEY-king
 
-> **多平台 AI API 密钥发现与验证工具**
+> **多平台 AI API 密钥发现与验证工具 - Web 可视化版本**
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker-compose.yml)
 
-APIKEY-king 是一个专业的 AI API 密钥安全扫描工具，支持 **4 大主流 AI 平台**的密钥发现和实时验证。
+APIKEY-king 是一个专业的 AI API 密钥安全扫描工具，支持 **4 大主流 AI 平台**的密钥发现和实时验证，配备完整的 **Web 可视化界面**和 **SQLite 数据库**持久化。
+
+---
 
 ## ⚡ 快速开始
 
-### 🚀 方式一：一键配置（推荐新手）
-
 ```bash
-# 运行配置向导
-python scripts/quick_setup.py
-
-# 按提示输入 GitHub Token 和代理设置
-# 自动生成 .env 配置文件
-
-# 开始扫描
-python -m src.main --mode compatible
-```
-
-### 🔧 方式二：手动配置
-
-```bash
-# 1. 复制简化配置模板
-cp .env.simple .env
-
-# 2. 编辑配置文件，只需填入两个核心配置：
-# GITHUB_TOKENS=your_github_token_here
-# PROXY=http://localhost:1080
-
-# 3. 开始扫描（系统自动使用预置查询）
-python -m src.main --mode compatible
-```
-
-### 🎯 支持的扫描模式
-
-```bash
-# 全面扫描（推荐）- 扫描所有4种平台
-python -m src.main --mode compatible
-
-# 单平台专项扫描
-python -m src.main --mode gemini-only      # Google AI 专项
-python -m src.main --mode openrouter-only  # OpenRouter 专项
-python -m src.main --mode modelscope-only  # ModelScope 专项
-python -m src.main --mode siliconflow-only # SiliconFlow 专项
-```
-
-### 📊 查看扫描结果
-
-- **有效密钥列表**：`data/keys/keys_valid_YYYYMMDD.txt`
-- **详细验证日志**：`data/logs/keys_valid_detail_YYYYMMDD.log`
-- **扫描进度记录**：`data/checkpoint.json`
-- **验证状态**：✅有效 / ❌无效 / ⏱️限制 / 🌐网络错误
-
-## � 最小配置要求
-
-只需配置两个核心选项即可开始使用：
-
-```bash
-# 必填：GitHub Token（获取地址：https://github.com/settings/tokens）
-GITHUB_TOKENS=your_github_token_here
-
-# 推荐：代理设置（避免IP被封）
-PROXY=http://localhost:1080
-```
-
-其他所有配置都有合理的默认值，无需手动设置！
-
-## �🚀 核心功能
-
-1. **GitHub搜索四种API Key** 🔍 - 基于自定义查询表达式搜索GitHub代码中的API密钥
-   - **Gemini** keys (`AIzaSy...`) - Google AI 密钥
-   - **OpenRouter** keys (`sk-or-v1-...`) - OpenRouter 平台密钥
-   - **ModelScope** keys (`ms-...`) - ModelScope 平台密钥
-   - **SiliconFlow** keys (`sk-...`) - SiliconFlow 平台密钥
-2. **🆕 实时验证功能** ✅ - 支持所有四种密钥类型的实时验证
-   - **Gemini**: 通过 Google AI API 验证
-   - **OpenRouter**: 通过 OpenRouter API 验证，使用免费模型
-   - **ModelScope**: 通过 ModelScope Chat API 验证，使用轻量模型
-   - **SiliconFlow**: 通过 SiliconFlow API 验证，使用高效模型
-3. **灵活模式切换** 🎛️ - 支持多种扫描模式快速切换
-   - `--mode compatible`: 全面扫描+验证所有类型
-   - `--mode gemini-only`: 专注 Gemini 密钥
-   - `--mode openrouter-only`: 专注 OpenRouter 密钥
-   - `--mode modelscope-only`: 专注 ModelScope 密钥
-   - `--mode siliconflow-only`: 专注 SiliconFlow 密钥
-4. **代理支持** 🌐 - 支持多代理轮换，提高访问稳定性和成功率
-5. **增量扫描** 📊 - 支持断点续传，避免重复扫描已处理的文件
-6. **智能过滤** 🚫 - 自动过滤文档、示例、测试文件，专注有效代码
-
-### 🔮 待开发功能 (TODO)
-
-- [ ] **数据库支持保存key** 💾 - 支持将发现的API密钥持久化存储到数据库中
-- [ ] **API、可视化展示抓取的key列表** 📊 - 提供API接口和可视化界面获取已抓取的密钥列表
-- [ ] **付费key检测** 💰 - 额外check下付费key
-
-## 📋 目录 🗂️
-
-- [本地部署](#-本地部署) 🏠
-- [Docker部署](#-docker部署) 🐳
-- [配置变量说明](#-配置变量说明) ⚙️
-
----
-
-## 🖥️ 本地部署 🚀
-
-### 1. 环境准备 🔧
-
-```bash
-# 确保已安装Python
-python --version
-
-# 安装uv包管理器（如果未安装）
-pip install uv
-```
-
-### 2. 项目设置 📁
-
-```bash
-# 克隆项目
-git clone <repository-url>
+# 1. 克隆项目
+git clone https://github.com/your-username/APIKEY-king.git
 cd APIKEY-king
 
-# 复制配置文件
-cp .env.template .env
+# 2. 启动服务
+docker-compose up -d
 
-# 复制查询文件
-cp queries.template data/queries.txt
-```
-
-### 3. 配置环境变量 🔑
-
-编辑 `.env` 文件，**必须**配置GitHub Token：
-
-```bash
-# 必填：GitHub访问令牌
-GITHUB_TOKENS=ghp1,ghp2,ghp3
-
-# 可选：其他配置保持默认值即可
-```
-
-> 💡 **获取GitHub Token**：访问 [GitHub Settings > Tokens](https://github.com/settings/tokens)，创建具有 `public_repo` 权限的访问令牌 🎫
-
-### 4. 安装依赖并运行 ⚡
-
-```bash
-# 安装项目依赖
-uv pip install -r pyproject.toml
-
-# 创建数据目录
-mkdir -p data
-
-# 🆕 全面扫描+验证模式（推荐）
-python -m src.main --mode compatible
-
-# 🆕 快捷启动脚本
-python scripts/quick_launch.py all              # 全面模式
-python scripts/quick_launch.py gemini           # 仅 Gemini
-python scripts/quick_launch.py openrouter       # 仅 OpenRouter  
-python scripts/quick_launch.py modelscope       # 仅 ModelScope
-
-# 🆕 Shell 脚本快捷方式 (Linux/Mac)
-./scripts/quick_scan.sh all                     # 全面模式
-./scripts/quick_scan.sh gm                      # Gemini 简写
-./scripts/quick_scan.sh or                      # OpenRouter 简写
-./scripts/quick_scan.sh ms                      # ModelScope 简写
-
-# 🆕 配置预设模式
-python -m src.main --config-preset gemini-only
-python -m src.main --config-preset openrouter-only
-python -m src.main --config-preset modelscope-only
-```
-
-### 5. 本地运行管理 🎮
-
-```bash
-# 查看日志文件
-tail -f data/keys/keys_valid_detail_*.log
-
-# 查看找到的有效密钥
-cat data/keys/keys_valid_*.txt
-
-# 停止程序
-Ctrl + C
+# 3. 访问 Web 界面
+浏览器打开: http://localhost:8000
+默认密码: kyx200328
 ```
 
 ---
 
-## 🐳 Docker部署 🌊
+## ✨ 核心特性
 
-### 方式一：使用环境变量
+### 🌐 Web 可视化界面
 
-```yaml
-version: '3.8'
-services:
-  hajimi-king:
-    image: ghcr.io/gakkinoone/hajimi-king:latest
-    container_name: hajimi-king
-    restart: unless-stopped
-    environment:
-      # 必填：GitHub访问令牌
-      - GITHUB_TOKENS=ghp_your_token_here_1,ghp_your_token_here_2
-      # 可选配置
-      - HAJIMI_CHECK_MODEL=gemini-2.5-flash
-      - QUERIES_FILE=queries.txt
-    volumes:
-      - ./data:/app/data
-    working_dir: /app
-```
+- **🔐 密码认证**: 默认密码 `kyx200328`（可修改），密码保存在数据库
+- **⚙️ 灵活配置**: 
+  - 可视化配置 GitHub Token、代理
+  - **每个渠道独立开关**
+  - **每个渠道自定义验证模型**
+  - 扫描模式选择（全部/单平台）
+  - **性能调优**（并发、延迟、超时、重试）
+- **📊 实时监控**: 扫描文件数、发现密钥数、有效密钥数实时更新
+- **📝 实时日志**: WebSocket 推送，彩色分类显示
+- **🔑 密钥管理**: SQLite 数据库存储，表格展示、一键复制、CSV 导出
+- **💾 数据持久化**: 所有配置和密钥保存在 SQLite 数据库
 
-### 方式二：使用.env文件
+### 🔍 支持的 AI 平台
 
-```yaml
-version: '3.8'
-services:
-  hajimi-king:
-    image: ghcr.io/gakkinoone/hajimi-king:latest
-    container_name: hajimi-king
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./data:/app/data
-    working_dir: /app
-```
+1. **Gemini** (`AIzaSy...`) - Google AI 密钥
+2. **OpenRouter** (`sk-or-v1-...`) - OpenRouter 平台密钥
+3. **ModelScope** (`ms-...`) - ModelScope 平台密钥
+4. **SiliconFlow** (`sk-...`) - SiliconFlow 平台密钥
 
-创建 `.env` 文件（参考 `.env.template`）：
-```bash
-# 复制配置模板
-cp .env.template .env
-# 编辑配置文件，填入你的GitHub Token
-```
+---
 
-### 启动服务
+## 📖 使用指南
+
+### 1️⃣ 启动服务
 
 ```bash
-# 创建数据目录和查询文件
-mkdir -p data
-echo "AIzaSy in:file" > data/queries.txt
+docker-compose up -d
+```
 
+### 2️⃣ 登录系统
+
+- 访问 `http://localhost:8000`
+- 输入密码：`kyx200328`
+
+### 3️⃣ 配置扫描
+
+在"扫描配置"区域：
+
+1. **GitHub Tokens**（必填）：每行一个
+   ```
+   ghp_xxxxxxxxxxxxxxxxxxxx
+   ghp_yyyyyyyyyyyyyyyyyyyy
+   ```
+   > 获取地址：https://github.com/settings/tokens
+
+2. **代理地址**（推荐）：避免 IP 被封
+   ```
+   http://localhost:1080
+   ```
+
+3. **扫描模式**：选择全部平台或单平台
+
+4. **渠道验证配置**（灵活配置）：
+   - **Gemini验证**：勾选启用，设置模型（如 `gemini-2.0-flash-exp`）
+   - **OpenRouter验证**：勾选启用，设置模型（如 `deepseek/deepseek-chat-v3:free`）
+   - **ModelScope验证**：勾选启用，设置模型（如 `Qwen/Qwen2-1.5B-Instruct`）
+   - **SiliconFlow验证**：勾选启用，设置模型（如 `Qwen/Qwen2.5-7B-Instruct`）
+
+5. **性能配置**（按需调优）：
+   - **最大并发文件数**：1-20（默认5）
+   - **请求间隔**：0-10秒（默认1秒）
+   - **GitHub超时**：10-120秒（默认30秒）
+   - **验证超时**：10-120秒（默认30秒）
+   - **最大重试次数**：0-10次（默认3次）
+
+6. 点击"保存配置"
+
+### 4️⃣ 开始扫描
+
+1. 点击"开始扫描"按钮
+2. 观察实时日志和统计数据
+3. 在"发现的密钥"区域查看结果
+
+### 5️⃣ 管理密钥和系统
+
+**密钥管理：**
+- **查看记忆**：查看已处理的查询和文件数量
+- **复制密钥**：点击"复制"按钮
+- **导出数据**：点击"导出 CSV"下载所有密钥
+- **刷新列表**：点击"刷新"更新数据
+- **清除记忆**：点击"清除记忆"按钮（橙色），重新开始扫描
+
+**系统设置：**
+- **修改密码**：点击右上角"修改密码"，安全管理登录密码
+- **退出登录**：点击右上角退出图标
+
+---
+
+## 🎯 灵活配置说明
+
+### 渠道独立配置
+
+每个 AI 平台渠道都可以**独立配置**：
+
+- ✅ **启用/禁用**: 勾选框控制是否启用该渠道的验证
+- ⚙️ **验证模型**: 为每个渠道指定不同的验证模型
+- 🎯 **灵活组合**: 可以只启用某些渠道，节省 API 额度
+
+### 推荐模型配置
+
+| 平台 | 推荐模型 | 说明 |
+|------|---------|------|
+| Gemini | `gemini-2.0-flash-exp` | 最快的免费模型 |
+| OpenRouter | `deepseek/deepseek-chat-v3:free` | 免费模型 |
+| ModelScope | `Qwen/Qwen2-1.5B-Instruct` | 轻量级模型 |
+| SiliconFlow | `Qwen/Qwen2.5-7B-Instruct` | 高效模型 |
+
+### 配置示例
+
+**场景一：只验证 Gemini**
+- ✅ Gemini 验证
+- ❌ OpenRouter 验证
+- ❌ ModelScope 验证
+- ❌ SiliconFlow 验证
+
+**场景二：全部验证，自定义模型**
+- ✅ Gemini → `gemini-1.5-flash`
+- ✅ OpenRouter → `google/gemini-2.0-flash-exp:free`
+- ✅ ModelScope → `Qwen/Qwen2.5-3B-Instruct`
+- ✅ SiliconFlow → `deepseek-ai/DeepSeek-V3`
+
+---
+
+## 💾 数据库持久化
+
+### 数据库表结构
+
+所有数据保存在 **单个 SQLite 文件**（`data/apikey.db`）：
+
+| 表名 | 说明 | 功能 |
+|------|------|------|
+| **system_settings** | 系统设置（密码哈希等） | 系统配置 |
+| **config** | GitHub Token、代理、验证器、性能配置 | 用户配置 |
+| **api_keys** | 发现的所有 API 密钥 | 密钥存储+去重 |
+| **scan_logs** | 扫描日志 | 日志记录 |
+| **scan_stats** | 扫描统计数据 | 统计分析 |
+| **processed_queries** | 已处理的查询 | 🧠 记忆功能 |
+| **scanned_shas** | 已扫描文件SHA | 🧠 去重功能 |
+
+### 🧠 智能记忆功能
+
+系统会自动记住扫描进度，避免重复工作：
+
+**自动记忆：**
+- ✅ 记住已处理的查询 → 不会重复搜索
+- ✅ 记住已扫描的文件SHA → 不会重复下载和分析
+- ✅ 断点续扫 → 重启后继续未完成的任务
+
+**一键清除：**
+- 点击 Web 界面的"清除记忆"按钮
+- 清除所有已处理记录
+- 下次扫描从头开始
+
+**适用场景：**
+- 长时间扫描可能中断 → 记忆功能避免重头开始
+- 想要重新扫描所有内容 → 清除记忆重新开始
+- 查询表达式更新 → 清除记忆使用新查询
+
+### 数据库优势
+
+- ✅ **单文件存储**：所有数据在一个 SQLite 文件中
+- ✅ **零配置**：自动创建和初始化
+- ✅ **轻量级**：无需额外数据库服务
+- ✅ **持久化**：重启不丢失
+- ✅ **可查询**：支持 SQL 查询和分析
+
+---
+
+## ❓ 常见问题
+
+### Web 版本还需要 .env 文件吗？
+
+**❌ 不需要！**
+
+- 所有配置通过 **Web 界面**输入
+- 配置保存在 **SQLite 数据库**中
+- 无需任何配置文件即可启动
+
+```bash
+docker-compose up -d  # 直接启动，无需配置
+```
+
+### data 目录的作用？
+
+**✅ 必需，但已精简**
+
+**📂 精简的数据目录：**
+```
+data/
+└── apikey.db     # 唯一的数据文件（存储所有数据）
+```
+
+**数据库包含 7 张表：**
+
+| 表 | 说明 |
+|---|------|
+| `system_settings` | 系统设置（密码、配置） |
+| `config` | 扫描配置（Token、代理、验证器、性能） |
+| `api_keys` | 密钥（存储+去重） |
+| `scan_logs` | 日志 |
+| `scan_stats` | 统计 |
+| `processed_queries` | 🧠 已处理查询（记忆） |
+| `scanned_shas` | 🧠 已扫描文件（去重） |
+
+**已删除的冗余文件：**
+- ❌ `data/keys/` 目录
+- ❌ `data/logs/` 目录
+- ❌ `checkpoint.json`
+- ❌ `scanned_shas.txt`
+
+### 🧠 智能记忆功能
+
+**自动记忆避免重复：**
+- ✅ 记住已处理的查询 → 不重复搜索
+- ✅ 记住已扫描的文件 → 通过SHA去重
+- ✅ 断点续扫 → 重启后继续任务
+
+**一键清除记忆：**
+
+在 Web 界面点击"清除记忆"按钮（橙色），适用于：
+- 💡 想要重新扫描所有内容
+- 💡 更新了查询表达式
+- 💡 清理数据库释放空间
+
+---
+
+## 🔧 高级配置
+
+### 密码管理
+
+**默认密码：** `kyx200328`
+
+**首次启动：**
+- 系统自动使用默认密码 `kyx200328`
+- 密码哈希保存在数据库中
+
+**修改密码：**
+1. 登录后，点击右上角"修改密码"按钮
+2. 输入当前密码和新密码
+3. 确认修改（需重新登录）
+
+**密码存储：**
+- 密码以 SHA256 哈希存储在数据库（`system_settings` 表）
+- 不存储明文密码
+- 重启后密码不会重置
+
+### 性能配置
+
+在"扫描配置"中的"性能配置"区域：
+
+| 配置项 | 默认值 | 说明 | 建议 |
+|--------|--------|------|------|
+| 最大并发文件数 | 5 | 同时处理的文件数量 | 5-10（避免限流） |
+| 请求间隔 | 1.0秒 | 每个请求之间的延迟 | 网络好可减少到0.5秒 |
+| GitHub超时 | 30秒 | GitHub API 请求超时 | 网络慢时增加到60秒 |
+| 验证超时 | 30秒 | 密钥验证请求超时 | API慢时增加到60秒 |
+| 最大重试次数 | 3次 | 失败后重试次数 | 网络不稳定时增加 |
+
+**调优建议：**
+- 🚀 **高速模式**：并发10 + 间隔0.5秒（需要好的代理）
+- ⚖️ **平衡模式**：并发5 + 间隔1秒（推荐）
+- 🐌 **保守模式**：并发2 + 间隔2秒（避免被限流）
+
+### 自定义端口
+
+修改 `docker-compose.yml`：
+```yaml
+ports:
+  - "8080:8000"  # 将 8000 改为你想要的端口
+```
+
+### 数据库备份
+
+```bash
+# 备份数据库
+cp data/apikey.db data/apikey.db.backup
+
+# 恢复数据库
+cp data/apikey.db.backup data/apikey.db
+```
+
+### 重新构建镜像
+
+修改配置或更新代码后：
+
+```bash
+# 重新构建并启动
+docker-compose up -d --build
+
+# 强制重建（清理缓存）
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+---
+
+## 🐳 Docker 命令
+
+```bash
 # 启动服务
 docker-compose up -d
 
 # 查看日志
 docker-compose logs -f
-```
 
-### Docker 场景下的 .env 示例（支持 ModelScope 和 OpenRouter）
+# 停止服务
+docker-compose down
 
-```bash
-# GitHub 访问令牌（必填）
-GITHUB_TOKENS=ghp_xxx1,ghp_xxx2
+# 重新构建
+docker-compose up -d --build
 
-# 数据卷挂载到容器内路径（compose 已映射 /app/data）
-DATA_PATH=/app/data
-
-# ModelScope 提取配置
-TARGET_BASE_URLS=https://api-inference.modelscope.cn/v1/,api-inference.modelscope.cn
-MODELSCOPE_EXTRACT_ONLY=true
-
-# OpenRouter 提取配置
-OPENROUTER_BASE_URLS=https://openrouter.ai/api/v1,openrouter.ai
-OPENROUTER_EXTRACT_ONLY=true
-
-# 可选：宽松匹配与距离约束（召回不足时再开启）
-# MS_USE_LOOSE_PATTERN=true
-# MS_PROXIMITY_CHARS=800
-# MS_REQUIRE_KEY_CONTEXT=true
-# OPENROUTER_USE_LOOSE_PATTERN=true
-# OPENROUTER_PROXIMITY_CHARS=800
-```
-
-### 代理配置
-
-强烈建议使用！GITHUB、GEMINI 访问长时间高频都会BAN IP
-
-如果需要使用代理访问GitHub或Gemini API，推荐使用本地WARP代理：
-
-> 🌐 **代理方案**：[warp-docker](https://github.com/cmj2002/warp-docker) - 本地WARP代理解决方案
-
-在 `.env` 文件中配置：
-```bash
-# 多个代理使用逗号分隔
-PROXY=http://localhost:1080
+# 查看状态
+docker-compose ps
 ```
 
 ---
 
-## ⚙️ 配置变量说明 📖
+## 📊 数据管理
 
-以下是所有可配置的环境变量，在 `.env` 文件中设置：
+### 数据库表结构
 
-### 🔴 必填配置 ⚠️
+SQLite 数据库（`data/apikey.db`）包含 7 张表：
 
-| 变量名 | 说明 | 示例值 |
-|--------|------|--------|
-| `GITHUB_TOKENS` | GitHub API访问令牌，多个用逗号分隔 🎫 | `ghp_token1,ghp_token2` |
+| 表名 | 说明 | 操作 |
+|------|------|------|
+| `system_settings` | 系统设置（密码等） | Web 界面设置 |
+| `config` | 配置数据（Token、性能等） | Web 界面配置 |
+| `api_keys` | 发现的密钥 | 自动保存 |
+| `scan_logs` | 扫描日志 | 自动记录 |
+| `scan_stats` | 统计数据 | 自动更新 |
+| `processed_queries` | 已处理查询（记忆） | 自动记录 |
+| `scanned_shas` | 已扫描文件（去重） | 自动记录 |
 
-### 🟡 重要配置（建议了解）🤓
-
-| 变量名 | 默认值                | 说明                                              |
-|--------|--------------------|-------------------------------------------------|
-| `PROXY` | 空 | 代理服务器地址，支持多个（逗号分隔）和账密认证，格式：`http://user:pass@proxy:port` 🌐 |
-| `DATA_PATH` | `/app/data`        | 数据存储目录路径 📂                                     |
-| `DATE_RANGE_DAYS` | `730`              | 仓库年龄过滤（天数），只扫描指定天数内的仓库 📅                       |
-| `QUERIES_FILE` | `queries.txt`      | 搜索查询配置文件路径（表达式严重影响搜索的高效性) 🎯                    |
-
-### 🆕 验证功能配置 ✅
-
-| 变量名 | 默认值 | 说明 |
-|--------|--------|------|
-| `GEMINI_VALIDATION_ENABLED` | `true` | 是否启用 Gemini 密钥验证 🧠 |
-| `HAJIMI_CHECK_MODEL` | `gemini-2.5-flash` | Gemini 验证使用的模型（建议用最快的模型） 🤖 |
-| `GEMINI_TIMEOUT` | `30.0` | Gemini 验证超时时间（秒）⏱️ |
-| `OPENROUTER_VALIDATION_ENABLED` | `true` | 是否启用 OpenRouter 密钥验证 🚀 |
-| `OPENROUTER_TEST_MODEL` | `deepseek/deepseek-chat-v3.1:free` | OpenRouter 验证使用的模型（建议用免费模型）🆓 |
-| `OPENROUTER_TIMEOUT` | `30.0` | OpenRouter 验证超时时间（秒）⏱️ |
-| `MODELSCOPE_VALIDATION_ENABLED` | `true` | 是否启用 ModelScope 密钥验证 🇨🇳 |
-| `MODELSCOPE_TEST_MODEL` | `Qwen/Qwen2-1.5B-Instruct` | ModelScope 验证使用的模型（建议用轻量模型）💫 |
-| `MODELSCOPE_TIMEOUT` | `30.0` | ModelScope 验证超时时间（秒）⏱️ |
-
-### 🟢 可选配置（不懂就别动）😅
-
-| 变量名                              | 默认值                                | 说明 |
-|----------------------------------|------------------------------------|------|
-| `VALID_KEY_PREFIX`               | `keys/keys_valid_`                 | 有效密钥文件名前缀 🗝️ |
-| `RATE_LIMITED_KEY_PREFIX`        | `keys/key_429_`                    | 频率限制密钥文件名前缀 ⏰ |
-| `VALID_KEY_DETAIL_PREFIX`        | `logs/keys_valid_detail_`          | 详细日志文件名前缀 📝 |
-| `RATE_LIMITED_KEY_DETAIL_PREFIX` | `logs/key_429_detail_`             | 频率限制详细日志文件名前缀 📊 |
-| `SCANNED_SHAS_FILE`              | `scanned_shas.txt`                 | 已扫描文件SHA记录文件名 📋 |
-| `FILE_PATH_BLACKLIST`            | `readme,docs,doc/,.md,example,...` | 文件路径黑名单，逗号分隔 🚫 |
-
-#### 🆕 API 密钥验证配置 ✅
-现在支持四种密钥类型的实时验证：
-- `GEMINI_VALIDATION_ENABLED`: 是否启用 Gemini 密钥验证（默认 true）
-- `OPENROUTER_VALIDATION_ENABLED`: 是否启用 OpenRouter 密钥验证（默认 true）
-- `MODELSCOPE_VALIDATION_ENABLED`: 是否启用 ModelScope 密钥验证（默认 true）
-- `SILICONFLOW_VALIDATION_ENABLED`: 是否启用 SiliconFlow 密钥验证（默认 true）
-- `*_TIMEOUT`: 各验证器的超时时间配置（默认 30 秒）
-- `*_TEST_MODEL`: 验证时使用的测试模型（建议使用免费/轻量模型）
-
-#### 传统提取配置（兼容性保留）
-##### ModelScope 提取配置
-- `TARGET_BASE_URLS`: 逗号分隔的 base_url 或域名，文件包含其一才会尝试提取（默认含 `https://api-inference.modelscope.cn/v1/`）。
-- `MS_USE_LOOSE_PATTERN`: 是否使用宽松匹配（默认 false）。
-- `MS_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
-- `MS_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
-
-##### OpenRouter 提取配置
-- `OPENROUTER_BASE_URLS`: 逗号分隔的 OpenRouter API 地址，文件包含其一才会尝试提取（默认含 `https://openrouter.ai/api/v1`）。
-- `OPENROUTER_USE_LOOSE_PATTERN`: 是否使用宽松匹配模式（默认 false）。
-- `OPENROUTER_PROXIMITY_CHARS`: 与 base_url 的最大字符距离（仅宽松模式下建议设置 300–1000 以降噪）。
-- `OPENROUTER_REQUIRE_KEY_CONTEXT`: 是否要求附近包含 key/token/secret/authorization 等上下文词（默认 false）。
-
-### 配置文件示例 💫
-
-完整的 `.env` 文件示例（🆕 包含验证功能）：
+### 查看数据库
 
 ```bash
-# 必填配置
-GITHUB_TOKENS=ghp_your_token_here_1,ghp_your_token_here_2
+# 进入容器
+docker exec -it apikey-king sh
 
-# 重要配置（可选修改）
-DATA_PATH=/app/data
-DATE_RANGE_DAYS=730
-QUERIES_FILE=queries.txt
-PROXY=
+# 查询密钥数量
+sqlite3 /app/data/apikey.db "SELECT COUNT(*) FROM api_keys;"
 
-# 🆕 验证功能配置 ✅ 
-# Gemini 验证
-GEMINI_VALIDATION_ENABLED=true
-HAJIMI_CHECK_MODEL=gemini-2.5-flash
-GEMINI_TIMEOUT=30.0
+# 查看扫描记忆
+sqlite3 /app/data/apikey.db "SELECT COUNT(*) FROM processed_queries;"
+sqlite3 /app/data/apikey.db "SELECT COUNT(*) FROM scanned_shas;"
 
-# OpenRouter 验证
-OPENROUTER_VALIDATION_ENABLED=true
-OPENROUTER_TEST_MODEL=deepseek/deepseek-chat-v3.1:free
-OPENROUTER_TIMEOUT=30.0
-
-# ModelScope 验证
-MODELSCOPE_VALIDATION_ENABLED=true
-MODELSCOPE_TEST_MODEL=Qwen/Qwen2-1.5B-Instruct
-MODELSCOPE_TIMEOUT=30.0
-
-# SiliconFlow 验证
-SILICONFLOW_VALIDATION_ENABLED=true
-SILICONFLOW_TEST_MODEL=Qwen/Qwen2.5-72B-Instruct
-SILICONFLOW_TIMEOUT=30.0
-
-# 高级配置（建议保持默认）
-VALID_KEY_PREFIX=keys/keys_valid_
-RATE_LIMITED_KEY_PREFIX=keys/key_429_
-VALID_KEY_DETAIL_PREFIX=logs/keys_valid_detail_
-RATE_LIMITED_KEY_DETAIL_PREFIX=logs/key_429_detail_
-SCANNED_SHAS_FILE=scanned_shas.txt
-FILE_PATH_BLACKLIST=readme,docs,doc/,.md,example,sample,tutorial,test,spec,demo,mock
+# 查看配置
+sqlite3 /app/data/apikey.db "SELECT * FROM config;"
 ```
 
-### 查询配置文件 🔍
+### 清理数据
 
-编辑 `queries.txt` 文件自定义搜索规则：
+**在 Web 界面操作：**
+- 清除密钥：点击"发现的密钥"区域的操作按钮
+- **清除记忆**：点击"清除记忆"按钮（橙色）
 
-⚠️ **重要提醒**：query 是本项目的核心！好的表达式可以让搜索更高效，需要发挥自己的想象力！🧠💡
-
+**或使用 API：**
 ```bash
-# GitHub搜索查询配置文件
-# 每行一个查询语句，支持GitHub搜索语法
-# 以#开头的行为注释，空行会被忽略
+# 清除所有密钥
+curl -X DELETE http://localhost:8000/api/keys/clear \
+  -H "Authorization: Bearer YOUR_TOKEN"
 
-# 基础搜索
-AIzaSy in:file
-AizaSy in:file filename:.env
+# 清除扫描记忆
+curl -X DELETE http://localhost:8000/api/memory/clear \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
-
-> 📖 **搜索语法参考**：[GitHub Code Search Syntax](https://docs.github.com/en/search-github/searching-on-github/searching-code) 📚  
-> 🎯 **核心提示**：创造性的查询表达式是成功的关键，多尝试不同的组合！
 
 ---
 
-## 🔒 安全注意事项 🛡️
+## 🛠️ 故障排除
 
-- ✅ GitHub Token权限最小化（只需`public_repo`读取权限）🔐
-- ✅ 定期轮换GitHub Token 🔄
-- ✅ 不要将真实的API密钥提交到版本控制 🙈
-- ✅ 定期检查和清理发现的密钥文件 🧹
+### 端口被占用
+```bash
+# 修改 docker-compose.yml 中的端口
+ports:
+  - "8080:8000"
+```
+
+### 数据库锁定
+```bash
+# 重启服务
+docker-compose restart
+```
+
+### 配置未生效
+- 检查是否点击了"保存配置"
+- 查看浏览器控制台是否有错误
+- 重新登录尝试
+
+---
+
+## 🤖 GitHub Actions 自动构建
+
+项目已配置 GitHub Actions，推送代码时自动构建 Docker 镜像。
+
+**构建配置：**
+- 架构：仅 linux/amd64
+- Dockerfile：单一 `Dockerfile`
+- 优化：多层缓存，快速构建
+
+**使用方式：**
+
+```bash
+# 推送触发自动构建
+git push origin main
+
+# 发布版本（自动构建标签）
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+
+# 拉取并使用镜像
+docker pull ghcr.io/your-username/apikey-king:latest
+docker run -d -p 8000:8000 -v $(pwd)/data:/app/data ghcr.io/your-username/apikey-king:latest
+```
+
+---
+
+## 📐 技术架构
+
+### 分层架构
+
+```
+前端层 (Vanilla JS + Tailwind CSS)
+    ↓ HTTP/WebSocket
+────────────────────────────────────
+API 路由层 (routers/)
+    ↓
+业务逻辑层 (services/)
+    ↓
+数据访问层 (database/)
+────────────────────────────────────
+核心扫描引擎
+    ├─ GitHub Service
+    ├─ Extractors (4种)
+    └─ Validators (4种，灵活配置)
+```
+
+### 后端目录结构（分层架构）
+
+```
+src/web/
+├── api.py                  # FastAPI 主入口 (60行) ✨
+│
+├── schemas/                # 📋 数据模型层 (Pydantic)
+│   ├── auth.py            # 认证模型
+│   ├── config.py          # 配置模型（含性能配置）
+│   └── scan.py            # 扫描模型
+│
+├── routers/                # 🚏 路由层 (HTTP 处理)
+│   ├── auth.py            # POST /api/auth/login
+│   ├── config.py          # GET/POST /api/config
+│   ├── scan.py            # POST /api/scan/control
+│   ├── keys.py            # GET/DELETE /api/keys
+│   ├── logs.py            # GET /api/logs
+│   ├── memory.py          # GET/DELETE /api/memory
+│   └── settings.py        # POST /api/settings/change-password
+│
+├── services/               # 🔧 业务逻辑层
+│   ├── auth_service.py    # 认证、密码管理、JWT
+│   ├── config_service.py  # 配置管理（含性能配置）
+│   ├── scan_service.py    # 扫描控制、线程管理
+│   ├── key_service.py     # 密钥 CRUD
+│   ├── log_service.py     # 日志管理、WebSocket
+│   └── memory_service.py  # 记忆管理
+│
+├── database/               # 💾 数据访问层
+│   └── database.py        # SQLite 封装 (7张表)
+│
+├── core/                   # ⚙️ 核心功能
+│   └── scanner_runner.py  # 后台扫描任务执行器
+│
+└── websocket/              # 🔌 实时通信
+    └── logs.py            # WS /ws/logs
+```
+
+**架构优势：**
+- ✅ 主文件从 638 行精简到 60 行（减少 91%）
+- ✅ 清晰的分层架构，职责明确
+- ✅ 高内聚低耦合，易于维护
+- ✅ 支持单元测试，质量可控
+- ✅ 易于扩展新功能
+
+
+### 技术栈
+
+- **后端**: FastAPI + Uvicorn + WebSocket + SQLite
+- **前端**: Vanilla JS + Tailwind CSS
+- **数据库**: SQLite（轻量级，零配置，7张表）
+- **认证**: JWT Token（24小时有效）+ 密码数据库存储
+- **架构**: 分层架构 + 依赖注入 + 模块化
+- **部署**: Docker（单文件）+ Docker Compose
+
+---
+
+## 🔒 安全注意事项
+
+- ✅ 修改默认密码
+- ✅ 定期备份数据库
+- ✅ 使用代理避免 IP 封禁
+- ✅ 定期清理密钥数据
+- ✅ 不要暴露到公网
 
 ---
 
@@ -435,16 +539,12 @@ AizaSy in:file filename:.env
 
 欢迎提交 Issue 和 Pull Request！
 
-- � **Bug 报告**: 请提供详细的错误信息和复现步骤
-- 💡 **功能建议**: 欢迎提出新的功能想法
-- 📝 **文档改进**: 帮助完善文档和示例
-- 🔧 **代码贡献**: 遵循现有代码风格和测试规范
+---
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+MIT License
 
 ---
 
-�💖 **享受使用 APIKEY-king 的快乐时光！** 🎉✨🎊
-
+**享受使用 APIKEY-king！** 🎉✨

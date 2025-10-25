@@ -1,86 +1,41 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 *.so
-build/
-dist/
-wheels/
-*.egg-info
-*.egg
-
-# Virtual environments
-.venv/
-.env/
-venv/
+.Python
 env/
+venv/
 ENV/
+.venv
+*.egg-info/
+dist/
+build/
 
-# Environment variables and configuration
-.env
-.env.local
-.env.*.local
-*.env
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
-# IDE and Editor files
-.idea/
+# IDE
 .vscode/
+.idea/
 *.swp
 *.swo
-*~
-.project
-.pydevproject
 
-# macOS system files
+# Environment
+.env
+.env.*
+
+# Data files (Web version uses database only)
+data/*
+!data/.gitkeep
+!data/apikey.db
+
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Windows system files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Logs and temporary files
-*.log
+# Temporary
 *.tmp
-*.temp
-logs/
-log/
-tmp/
-temp/
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-*.cover
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Docker
-.dockerignore
-
-# Project-specific data directories
-data/
-keys/
-results/
-
-# Backup files
 *.bak
-*.backup
-*.orig
-

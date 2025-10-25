@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="APIKEY-king - API Key Discovery Tool">
+    <title>APIKEY-king - 可视化控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        success: {
+                            DEFAULT: "hsl(142.1 76.2% 36.3%)",
+                            foreground: "hsl(355.7 100% 97.3%)",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(0 84.2% 60.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .spinner {
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen">
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center px-4">
+        <div class="bg-white rounded-lg border border-slate-200 shadow-lg p-8 w-full max-w-md">
+            <div class="text-center mb-6">
+                <svg class="w-16 h-16 text-primary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                    </path>
+                </svg>
+                <h1 class="text-3xl font-bold text-slate-900">APIKEY-king</h1>
+                <p class="text-slate-600 mt-2">API Key Discovery Tool</p>
+            </div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">密码</label>
+                    <input type="password" id="password"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="请输入密码" required />
+                </div>
+                <button type="submit"
+                    class="w-full px-4 py-2.5 bg-primary text-white rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary">
+                    登录
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboardPage" class="hidden">
+        <!-- Header -->
+        <div class="bg-white border-b border-slate-200 shadow-sm">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                            </path>
+                        </svg>
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">APIKEY-king</h1>
+                            <p class="text-xs text-slate-500">可视化控制台</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="showChangePasswordDialog()"
+                            class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
+                                </path>
+                            </svg>
+                            <span class="hidden sm:inline">修改密码</span>
+                        </button>
+                        <button onclick="handleLogout()" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-4 py-6 max-w-7xl">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-600">扫描文件数</p>
+                            <p class="text-2xl font-bold text-slate-900 mt-1" id="statFiles">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-600">发现密钥数</p>
+                            <p class="text-2xl font-bold text-slate-900 mt-1" id="statKeys">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-600">有效密钥数</p>
+                            <p class="text-2xl font-bold text-success mt-1" id="statValidKeys">0</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Card -->
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-6">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold text-slate-900 mb-4">扫描配置</h2>
+                    <form id="configForm" onsubmit="handleSaveConfig(event)">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">GitHub Tokens
+                                    (每行一个)</label>
+                                <textarea id="githubTokens" rows="3"
+                                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                                    placeholder="ghp_xxxxxxxxxxxxx" required></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">代理地址 (可选)</label>
+                                <input type="text" id="proxy"
+                                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder="http://localhost:1080" />
+                                <label class="block text-sm font-medium text-slate-700 mb-2 mt-3">日期范围 (天)</label>
+                                <input type="number" id="dateRange" value="730"
+                                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">扫描模式</label>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                <label
+                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="scanMode" value="compatible" checked class="mr-2" />
+                                    <span class="text-sm">全部平台</span>
+                                </label>
+                                <label
+                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="scanMode" value="gemini-only" class="mr-2" />
+                                    <span class="text-sm">Gemini</span>
+                                </label>
+                                <label
+                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="scanMode" value="openrouter-only" class="mr-2" />
+                                    <span class="text-sm">OpenRouter</span>
+                                </label>
+                                <label
+                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="scanMode" value="modelscope-only" class="mr-2" />
+                                    <span class="text-sm">ModelScope</span>
+                                </label>
+                                <label
+                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="scanMode" value="siliconflow-only" class="mr-2" />
+                                    <span class="text-sm">SiliconFlow</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 渠道验证配置 -->
+                        <div class="mb-4">
+                            <h3 class="text-lg font-semibold text-slate-900 mb-3">渠道验证配置</h3>
+
+                            <!-- Gemini -->
+                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="geminiEnabled" checked class="mr-2" />
+                                        <span class="font-medium text-slate-700">Gemini 验证</span>
+                                    </label>
+                                </div>
+                                <div class="ml-6">
+                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
+                                    <input type="text" id="geminiModel" value="gemini-2.0-flash-exp"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                </div>
+                            </div>
+
+                            <!-- OpenRouter -->
+                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="openrouterEnabled" checked class="mr-2" />
+                                        <span class="font-medium text-slate-700">OpenRouter 验证</span>
+                                    </label>
+                                </div>
+                                <div class="ml-6">
+                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
+                                    <input type="text" id="openrouterModel" value="deepseek/deepseek-chat-v3:free"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                </div>
+                            </div>
+
+                            <!-- ModelScope -->
+                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="modelscopeEnabled" checked class="mr-2" />
+                                        <span class="font-medium text-slate-700">ModelScope 验证</span>
+                                    </label>
+                                </div>
+                                <div class="ml-6">
+                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
+                                    <input type="text" id="modelscopeModel" value="Qwen/Qwen2-1.5B-Instruct"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                </div>
+                            </div>
+
+                            <!-- SiliconFlow -->
+                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="siliconflowEnabled" checked class="mr-2" />
+                                        <span class="font-medium text-slate-700">SiliconFlow 验证</span>
+                                    </label>
+                                </div>
+                                <div class="ml-6">
+                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
+                                    <input type="text" id="siliconflowModel" value="Qwen/Qwen2.5-7B-Instruct"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 性能配置 -->
+                        <div class="mb-4">
+                            <h3 class="text-lg font-semibold text-slate-900 mb-3">性能配置</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">最大并发文件数</label>
+                                    <input type="number" id="maxConcurrent" value="5" min="1" max="20"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                    <p class="text-xs text-slate-500 mt-1">建议: 5-10</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">请求间隔（秒）</label>
+                                    <input type="number" id="requestDelay" value="1.0" min="0" max="10" step="0.1"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                    <p class="text-xs text-slate-500 mt-1">避免限流</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">GitHub超时（秒）</label>
+                                    <input type="number" id="githubTimeout" value="30" min="10" max="120"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                    <p class="text-xs text-slate-500 mt-1">网络慢时增加</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">验证超时（秒）</label>
+                                    <input type="number" id="validationTimeout" value="30" min="10" max="120"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                    <p class="text-xs text-slate-500 mt-1">API响应慢时增加</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">最大重试次数</label>
+                                    <input type="number" id="maxRetries" value="3" min="0" max="10"
+                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                    <p class="text-xs text-slate-500 mt-1">失败后重试</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit"
+                            class="px-6 py-2.5 bg-primary text-white rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary">
+                            保存配置
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-6">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold text-slate-900 mb-4">扫描控制</h2>
+                    <div class="flex gap-3">
+                        <button id="btnStart" onclick="handleStartScan()"
+                            class="px-6 py-2.5 bg-success text-white rounded-md font-medium hover:bg-success/90 focus:outline-none focus:ring-2 focus:ring-success flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                                </path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            开始扫描
+                        </button>
+                        <button id="btnStop" onclick="handleStopScan()"
+                            class="px-6 py-2.5 bg-destructive text-white rounded-md font-medium hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive flex items-center gap-2"
+                            disabled>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                            </svg>
+                            停止扫描
+                        </button>
+                        <div id="scanStatus" class="flex items-center gap-2 ml-4">
+                            <div class="w-3 h-3 bg-slate-400 rounded-full"></div>
+                            <span class="text-sm text-slate-600">未运行</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Panel -->
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-6">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-slate-900">实时日志</h2>
+                        <button onclick="clearLogs()" class="text-sm text-slate-600 hover:text-slate-900">清空</button>
+                    </div>
+                    <div id="logsContainer"
+                        class="bg-slate-50 rounded border border-slate-200 p-4 h-96 overflow-y-auto font-mono text-xs space-y-1">
+                        <div class="text-slate-500">等待日志...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keys Panel -->
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-slate-900">发现的密钥</h2>
+                        <div class="flex gap-2">
+                            <button onclick="exportKeys()"
+                                class="px-4 py-2 text-sm bg-primary text-white rounded hover:bg-primary/90">
+                                导出 CSV
+                            </button>
+                            <button onclick="refreshKeys()"
+                                class="px-4 py-2 text-sm bg-slate-200 text-slate-700 rounded hover:bg-slate-300">
+                                刷新
+                            </button>
+                            <button onclick="clearMemory()"
+                                class="px-4 py-2 text-sm bg-amber-500 text-white rounded hover:bg-amber-600 flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
+                                </svg>
+                                清除记忆
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                        <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-blue-900">
+                            <p class="font-semibold">扫描记忆功能</p>
+                            <p class="text-blue-800">系统会记住已扫描的文件和查询，避免重复扫描。已处理 <span id="memoryStats"
+                                    class="font-bold">加载中...</span></p>
+                        </div>
+                    </div>
+                    <div id="keysContainer" class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 border-b-2 border-slate-300">
+                                <tr>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">类型</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">密钥</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">来源</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">发现时间</th>
+                                    <th class="px-3 py-3 text-center font-semibold text-slate-800">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keysTableBody" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="5" class="px-3 py-8 text-center text-slate-500">暂无数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-semibold text-slate-900 mb-4">修改密码</h3>
+            <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">当前密码</label>
+                    <input type="password" id="oldPassword" required
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">新密码</label>
+                    <input type="password" id="newPassword" required minlength="6"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <p class="text-xs text-slate-500 mt-1">至少6位字符</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">确认新密码</label>
+                    <input type="password" id="confirmPassword" required minlength="6"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit"
+                        class="flex-1 px-4 py-2.5 bg-primary text-white rounded-md hover:bg-primary/90">
+                        确认修改
+                    </button>
+                    <button type="button" onclick="hideChangePasswordDialog()"
+                        class="flex-1 px-4 py-2.5 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300">
+                        取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

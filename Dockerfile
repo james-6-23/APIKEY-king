@@ -1,52 +1,48 @@
-# 使用官方Python 3.11镜像作为基础镜像
-FROM registry-1.docker.io/library/python:3.11-slim
+# APIKEY-king Web Interface - Optimized Dockerfile
+FROM python:3.11-slim
 
-# 设置工作目录
+LABEL maintainer="APIKEY-king"
+LABEL description="APIKEY-king - API Key Discovery Tool with Web Interface"
+
 WORKDIR /app
 
-# 设置环境变量
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    git \
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装uv包管理器
-RUN pip install uv
+# Copy dependency files
+COPY pyproject.toml ./
 
-# 先复制依赖文件
-COPY pyproject.toml .
-COPY requirements.txt* .
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    pyjwt \
+    websockets \
+    google-generativeai>=0.8.5 \
+    python-dotenv>=1.1.1 \
+    requests>=2.32.4 \
+    pyyaml>=6.0
 
-# 使用uv安装Python依赖
-RUN uv pip install --system --no-cache -r pyproject.toml
-
-# 复制项目文件
+# Copy project files
 COPY src/ ./src/
-COPY scripts/ ./scripts/
 COPY config/ ./config/
-COPY .env.template .
+COPY web/ ./web/
 
-# 创建数据目录
-RUN mkdir -p data/{keys,logs} && \
-    chmod +x scripts/*.sh || true
+# Create data directory (only need database file)
+RUN mkdir -p /app/data
 
-# 创建默认查询文件（支持三种API密钥）
-RUN echo '# 三种API密钥搜索查询' > data/queries.txt && \
-    echo 'AIzaSy in:file' >> data/queries.txt && \
-    echo '"https://openrouter.ai/api/v1" in:file' >> data/queries.txt && \
-    echo '"https://api-inference.modelscope.cn/v1/" in:file' >> data/queries.txt && \
-    echo '"openrouter.ai" AND "sk-or-v1-"' >> data/queries.txt && \
-    echo '"api-inference.modelscope.cn" AND "ms-"' >> data/queries.txt
+# Expose port
+EXPOSE 8000
 
-# 设置数据目录为卷
-VOLUME ["/app/data"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
-# 暴露端口（为未来的Web界面预留）
-EXPOSE 8080
+# Run the web server
+CMD ["python", "-m", "uvicorn", "src.web.api:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# 默认运行全面验证模式
-CMD ["python", "-m", "src.main", "--mode", "compatible"]
