@@ -748,10 +748,38 @@ function getKeyTypeBadge(type) {
 
 async function copyKey(key) {
     try {
-        await navigator.clipboard.writeText(key);
-        showToast('已复制到剪贴板', 'success');
+        // 优先使用现代 Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(key);
+            showToast('已复制到剪贴板', 'success');
+        } else {
+            // 降级方案：使用传统的 execCommand 方法
+            const textArea = document.createElement('textarea');
+            textArea.value = key;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    showToast('已复制到剪贴板', 'success');
+                } else {
+                    throw new Error('execCommand failed');
+                }
+            } catch (err) {
+                document.body.removeChild(textArea);
+                throw err;
+            }
+        }
     } catch (error) {
-        showToast('复制失败', 'error');
+        console.error('Copy failed:', error);
+        showToast('复制失败，请手动复制', 'error');
     }
 }
 
