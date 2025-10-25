@@ -3,10 +3,6 @@ const API_BASE = window.location.origin;
 let authToken = localStorage.getItem('auth_token');
 let ws = null;
 
-// Charts
-let keyTypeChart = null;
-let efficiencyChart = null;
-
 // All keys cache for filtering
 let allKeysCache = [];
 
@@ -85,7 +81,6 @@ function showDashboard() {
     loadKeys();
     loadMemoryStats();
     loadQueryStats();
-    initCharts();
     startStatusPolling();
     connectWebSocket();
 }
@@ -386,11 +381,6 @@ const updateStats = window.perfUtils.throttle(function(stats) {
     document.getElementById('statFiles').textContent = stats.total_files || 0;
     document.getElementById('statKeys').textContent = stats.total_keys || 0;
     document.getElementById('statValidKeys').textContent = stats.valid_keys || 0;
-    
-    // Update efficiency chart if scanning
-    if (stats.total_files > 0) {
-        updateEfficiencyChart(stats);
-    }
 }, 1000); // 限制每秒更新一次
 
 function updateProgress(stats) {
@@ -579,7 +569,6 @@ async function loadKeys(keyType = null, search = null) {
             const data = await response.json();
             allKeysCache = data.keys;
             displayKeys(data.keys);
-            updateCharts();
         }
     } catch (error) {
         console.error('Failed to load keys:', error);
@@ -612,175 +601,8 @@ const handleKeySearch = window.perfUtils.debounce(function() {
 
 async function refreshKeys() {
     await loadKeys();
-    updateCharts();
     showToast('已刷新', 'success');
 }
-
-// Charts
-function initCharts() {
-    // Key Type Distribution Chart
-    const keyTypeCtx = document.getElementById('keyTypeChart');
-    if (keyTypeCtx) {
-        keyTypeChart = new Chart(keyTypeCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Gemini', 'OpenRouter', 'ModelScope', 'SiliconFlow'],
-                datasets: [{
-                    data: [0, 0, 0, 0],
-                    backgroundColor: [
-                        'rgb(147, 51, 234)',  // purple
-                        'rgb(59, 130, 246)',   // blue
-                        'rgb(34, 197, 94)',    // green
-                        'rgb(251, 146, 60)'    // orange
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false, // 禁用所有动画
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            font: { size: 11 }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Efficiency Trend Chart
-    const efficiencyCtx = document.getElementById('efficiencyChart');
-    if (efficiencyCtx) {
-        efficiencyChart = new Chart(efficiencyCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: '扫描文件数',
-                    data: [],
-                    borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.2, // 减少曲线复杂度
-                    fill: true,
-                    pointRadius: 0, // 不显示点，提升性能
-                    pointHoverRadius: 3
-                }, {
-                    label: '有效密钥数',
-                    data: [],
-                    borderColor: 'rgb(34, 197, 94)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    tension: 0.2,
-                    fill: true,
-                    pointRadius: 0,
-                    pointHoverRadius: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false, // 禁用所有动画
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { 
-                            font: { size: 10 },
-                            maxTicksLimit: 5 // 减少刻度数量
-                        },
-                        grid: {
-                            drawBorder: false,
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    x: {
-                        ticks: { 
-                            font: { size: 10 },
-                            maxTicksLimit: 8
-                        },
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: { font: { size: 11 } }
-                    }
-                }
-            }
-        });
-    }
-}
-
-async function updateCharts() {
-    try {
-        const response = await fetch(`${API_BASE}/api/keys`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            const keys = data.keys;
-
-            // Update key type distribution
-            const typeCounts = {
-                'gemini': 0,
-                'openrouter': 0,
-                'modelscope': 0,
-                'siliconflow': 0
-            };
-
-            keys.forEach(key => {
-                const type = key.type.toLowerCase();
-                if (typeCounts.hasOwnProperty(type)) {
-                    typeCounts[type]++;
-                }
-            });
-
-            if (keyTypeChart) {
-                keyTypeChart.data.datasets[0].data = [
-                    typeCounts.gemini,
-                    typeCounts.openrouter,
-                    typeCounts.modelscope,
-                    typeCounts.siliconflow
-                ];
-                keyTypeChart.update();
-            }
-        }
-    } catch (error) {
-        console.error('Failed to update charts:', error);
-    }
-}
-
-// Throttled chart update
-const updateEfficiencyChart = window.perfUtils.throttle(function(stats) {
-    if (!efficiencyChart) return;
-
-    const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    
-    // Keep only last 20 data points
-    if (efficiencyChart.data.labels.length >= 20) {
-        efficiencyChart.data.labels.shift();
-        efficiencyChart.data.datasets[0].data.shift();
-        efficiencyChart.data.datasets[1].data.shift();
-    }
-
-    efficiencyChart.data.labels.push(now);
-    efficiencyChart.data.datasets[0].data.push(stats.total_files || 0);
-    efficiencyChart.data.datasets[1].data.push(stats.valid_keys || 0);
-    efficiencyChart.update('none'); // No animation for real-time updates
-}, 2000); // 限制每2秒更新一次
 
 function displayKeys(keys) {
     const tbody = document.getElementById('keysTableBody');
@@ -1061,38 +883,16 @@ function toggleDarkMode() {
     const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('darkMode', isDark);
     updateDarkModeIcon(isDark);
-    updateChartsTheme(isDark);
     showToast(isDark ? '已切换到暗黑模式' : '已切换到亮色模式', 'success');
 }
 
 function updateDarkModeIcon(isDark) {
     const icon = document.getElementById('darkModeIcon');
-    const text = document.getElementById('darkModeText');
     
     if (isDark) {
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
-        if (text) text.textContent = '亮色';
     } else {
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
-        if (text) text.textContent = '暗黑';
-    }
-}
-
-function updateChartsTheme(isDark) {
-    const textColor = isDark ? '#e2e8f0' : '#334155';
-    const gridColor = isDark ? '#334155' : '#e2e8f0';
-    
-    if (keyTypeChart) {
-        keyTypeChart.options.plugins.legend.labels.color = textColor;
-        keyTypeChart.update();
-    }
-    
-    if (efficiencyChart) {
-        efficiencyChart.options.scales.x.ticks.color = textColor;
-        efficiencyChart.options.scales.y.ticks.color = textColor;
-        efficiencyChart.options.scales.x.grid = { color: gridColor };
-        efficiencyChart.options.scales.y.grid = { color: gridColor };
-        efficiencyChart.update();
     }
 }
 
