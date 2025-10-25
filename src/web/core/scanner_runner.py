@@ -32,117 +32,117 @@ class ScannerRunner:
             if self.config.get("proxy"):
                 os.environ["PROXY"] = self.config["proxy"]
             os.environ["DATE_RANGE_DAYS"] = str(self.config.get("date_range_days", 730))
-            
+
             # Determine scan mode
             scan_mode = ScanMode(self.config.get("scan_mode", "compatible"))
-            
+
             # Initialize services
             app_config_service = AppConfigService()
             app_config = app_config_service.load_config()
-            
+
             # Apply scan mode overrides
             self._apply_scan_mode_config(app_config, scan_mode)
-            
+
             github_service = GitHubService(app_config)
             file_service = FileService(app_config.data_path)
-            
+
             # Create extractors and validators with custom config
             extractors = self._create_extractors(app_config)
             validators_config = self.config.get("validators", {})
             validators = self._create_validators_with_config(app_config, validators_config)
-            
+
             scanner = APIKeyScanner(extractors, validators)
-            
+
             # 从数据库加载扫描记忆
             memory_stats = db.get_scan_memory_stats()
-            
+
             self.log_service.add_log("success", "Scanner initialized", {
                 "extractors": len(extractors),
                 "validators": len(validators),
                 "processed_queries": memory_stats.get("processed_queries", 0),
                 "scanned_files": memory_stats.get("scanned_files", 0)
             })
-            
+
             # Load queries
             queries = file_service.load_queries(app_config.scan.queries_file)
             self.log_service.add_log("info", f"Loaded {len(queries)} queries")
-            
+
             # Update total queries for progress
             self.stats["total_queries"] = len(queries)
-            
+
             # Scan loop
             loop_count = 0
             while not stop_flag():
                 loop_count += 1
                 self.log_service.add_log("info", f"Starting scan loop #{loop_count}")
-                
+
                 for i, query in enumerate(queries, 1):
                     if stop_flag():
                         break
-                    
+
                     # 暂停检查
                     while self.scan_service.is_paused() and not stop_flag():
                         time.sleep(1)
-                    
+
                     if stop_flag():
                         break
-                    
+
                     # 更新进度
                     self.scan_service.update_progress(i, len(queries), query[:50])
-                    
+
                     normalized_query = " ".join(query.split())
-                    
+
                     # 从数据库检查是否已处理
                     if db.is_query_processed(normalized_query):
                         continue
-                    
+
                     self.log_service.add_log("info", f"Processing query {i}/{len(queries)}: {query[:50]}...")
-                    
+
                     try:
                         # Search GitHub
                         search_results = github_service.search_code(query)
                         items = search_results.get('items', [])
-                        
+
                         if not items:
                             db.add_processed_query(normalized_query)
                             continue
-                        
+
                         self.log_service.add_log("info", f"Found {len(items)} items for query {i}")
-                        
+
                         # Process items
                         for item_idx, item in enumerate(items, 1):
                             if stop_flag():
                                 break
-                            
+
                             # 检查是否已扫描（从数据库）
                             sha = item.get("sha")
                             if sha and db.is_sha_scanned(sha):
                                 continue
-                            
+
                             # Get file content
                             content = github_service.get_file_content(item)
                             if not content:
                                 continue
-                            
+
                             # Scan content
                             context = {
                                 'file_path': item.get('path', ''),
                                 'repository': item.get('repository', {}),
                             }
-                            
+
                             scan_results = scanner.scan_content(content, context)
-                            
+
                             if scan_results['summary']['total_keys_found'] > 0:
                                 self.log_service.add_log("success", f"Found {scan_results['summary']['total_keys_found']} keys", {
                                     "file": item.get('path', ''),
                                     "repo": item.get('repository', {}).get('full_name', '')
                                 })
-                                
+
                                 # Save keys
                                 for key, validation_result in scan_results['validation_results'].items():
                                     if validation_result.is_valid:
                                         key_type = self._determine_key_type(key)
-                                        
+
                                         # 保存到数据库
                                         db.save_key(
                                             key_value=key,
@@ -154,9 +154,9 @@ class ScannerRunner:
                                             validation_status='valid',
                                             validation_message=None
                                         )
-                                        
+
                                         self.stats["valid_keys"] += 1
-                            
+
                             # 保存到数据库记忆
                             db.add_scanned_sha(
                                 item.get("sha"),
@@ -165,21 +165,25 @@ class ScannerRunner:
                             )
                             self.stats["total_files"] += 1
                             self.stats["last_update"] = datetime.now().isoformat()
-                        
+
                         # 标记查询已处理
                         db.add_processed_query(normalized_query)
-                        
+
                     except Exception as e:
                         self.log_service.add_log("error", f"Error processing query: {str(e)}")
-                
+
                 if not stop_flag():
                     self.log_service.add_log("info", "Scan loop complete, sleeping 10 seconds...")
                     time.sleep(10)
-            
+
             self.log_service.add_log("warning", "Scanner stopped by user")
-            
+
         except Exception as e:
             self.log_service.add_log("error", f"Scanner error: {str(e)}")
+        finally:
+            # 确保扫描结束时重置运行状态
+            self.scan_service.set_running(False)
+            self.log_service.add_log("info", "Scanner thread terminated")
     
     def _apply_scan_mode_config(self, config: AppConfig, scan_mode: ScanMode):
         """Apply scan mode configuration."""

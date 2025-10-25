@@ -30,13 +30,13 @@ async def update_config(
 async def get_config(payload: dict = Depends(verify_token_dependency)):
     """Get current configuration."""
     config = config_service.get_config()
-    
+
     if not config:
         return {"status": "empty", "config": None}
-    
-    # Mask tokens for security
-    config["github_tokens"] = [f"{t[:8]}..." for t in config.get("github_tokens", [])]
-    
+
+    # 不要掩码 tokens，因为前端需要完整的 token 来重新填充表单
+    # 用户已经通过 JWT 认证，可以安全地返回完整配置
+
     return {"status": "ok", "config": config}
 
 

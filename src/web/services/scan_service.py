@@ -76,11 +76,12 @@ class ScanService:
         """Stop scanning."""
         if not self._running:
             raise Exception("Scanner is not running")
-        
+
         self._stop_flag = True
+        self._running = False  # 立即标记为未运行状态
         log_svc = get_log_service()
         log_svc.add_log("warning", "Stop signal sent, waiting for scanner to finish current task...")
-        
+
         return {"status": "ok", "message": "Stop signal sent"}
     
     def pause_scan(self) -> Dict:

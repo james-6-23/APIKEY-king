@@ -6,6 +6,28 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Set, List, Dict, Any, Optional
 
+# Import config models
+from .config import (
+    AppConfig,
+    ProxyConfig,
+    ExtractorConfig,
+    ValidatorConfig,
+    GitHubConfig,
+    ScanConfig
+)
+
+__all__ = [
+    'Checkpoint',
+    'ScanResult',
+    'BatchScanResult',
+    'AppConfig',
+    'ProxyConfig',
+    'ExtractorConfig',
+    'ValidatorConfig',
+    'GitHubConfig',
+    'ScanConfig'
+]
+
 
 @dataclass
 class Checkpoint:
