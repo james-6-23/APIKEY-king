@@ -852,6 +852,24 @@ async function loadQueryStats() {
     }
 }
 
+// Config Dialog
+function showConfigDialog() {
+    // 显示配置卡片
+    const configCard = document.getElementById('configCardOld');
+    if (configCard) {
+        configCard.classList.remove('hidden');
+        // 平滑滚动到配置区域
+        configCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function hideConfigDialog() {
+    const configCard = document.getElementById('configCardOld');
+    if (configCard) {
+        configCard.classList.add('hidden');
+    }
+}
+
 // Password Management
 function showChangePasswordDialog() {
     document.getElementById('changePasswordModal').classList.remove('hidden');
