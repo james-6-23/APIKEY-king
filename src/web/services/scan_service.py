@@ -180,10 +180,19 @@ class ScanService:
             # 如果扫描被终止，保留已统计信息供下一次恢复
             pass
 
+        # 重置运行状态，确保前端展示停止
+        self._running = False
+        self._paused = False
+        self._stop_flag = False
+
+        # 将进度标记为完成
+        if completed and self._stats.get("total_queries"):
+            self._stats["progress_percent"] = 100
+            self._stats["current_query"] = ""
+
         # 重置运行状态
         self._current_scan_mode = None
         self._scan_start_time = None
-        self._paused = False
     
     def is_paused(self) -> bool:
         """Check if scanner is paused."""
@@ -195,4 +204,3 @@ class ScanService:
         self._stats["total_queries"] = total_queries
         self._stats["current_query"] = current_query
         self._stats["progress_percent"] = int((current_query_index / total_queries) * 100) if total_queries > 0 else 0
-

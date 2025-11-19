@@ -7,6 +7,7 @@
     <meta name="description" content="APIKEY-king - API Key Discovery Tool">
     <title>APIKEY-king - 可视化控制台</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -30,8 +31,114 @@
         }
     </script>
     <style>
+        :root {
+            --ink-900: #050816;
+            --ink-700: #0b132b;
+            --ink-500: #192742;
+            --glass-light: rgba(255, 255, 255, 0.82);
+            --glass-dark: rgba(15, 23, 42, 0.65);
+            --accent-1: #56ccf2;
+            --accent-2: #7c3aed;
+            --accent-3: #22d3ee;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at 20% 20%, rgba(87, 101, 242, 0.12), transparent 25%),
+                        radial-gradient(circle at 80% 0%, rgba(34, 211, 238, 0.16), transparent 22%),
+                        radial-gradient(circle at 50% 90%, rgba(124, 58, 237, 0.22), transparent 25%),
+                        #0b1224;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+            background-size: 70px 70px;
+            opacity: 0.5;
+            z-index: 0;
+        }
+
+        .bg-ambient {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            filter: blur(70px);
+            background: radial-gradient(circle at 15% 40%, rgba(124, 58, 237, 0.23), transparent 35%),
+                        radial-gradient(circle at 80% 30%, rgba(34, 211, 238, 0.28), transparent 32%),
+                        radial-gradient(circle at 60% 80%, rgba(59, 130, 246, 0.25), transparent 30%);
+            z-index: 0;
+        }
+
+        @keyframes pulseBorder {
+            0% { box-shadow: 0 0 0 0 rgba(86, 204, 242, 0.35); }
+            100% { box-shadow: 0 0 0 18px rgba(86, 204, 242, 0); }
+        }
+
+        .glass-card {
+            background: var(--glass-light);
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 20px 80px rgba(35, 58, 107, 0.25);
+            backdrop-filter: saturate(140%) blur(16px);
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-hover {
+            transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 24px 80px rgba(37, 99, 235, 0.25);
+            border-color: rgba(86, 204, 242, 0.6);
+        }
+
+        .dark .glass-card {
+            background: var(--glass-dark);
+            border-color: rgba(148, 163, 184, 0.3);
+            box-shadow: 0 16px 60px rgba(0, 0, 0, 0.45);
+        }
+
+        .dark body {
+            background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.18), transparent 25%),
+                        radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.18), transparent 22%),
+                        #050816;
+        }
+
+        .neon-text {
+            background: linear-gradient(120deg, var(--accent-3), var(--accent-1), var(--accent-2));
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .accent-pill {
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: linear-gradient(90deg, rgba(34, 211, 238, 0.08), rgba(124, 58, 237, 0.18));
+            backdrop-filter: blur(12px);
+        }
+
+        .glow-button {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glow-button::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.25), transparent 40%);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .glow-button:hover::after {
+            opacity: 1;
         }
 
         .spinner {
@@ -44,13 +151,8 @@
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .toast {
@@ -62,15 +164,8 @@
         }
 
         @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .log-item {
@@ -78,66 +173,28 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none; }
 
         /* Performance optimizations */
-        .will-change-scroll {
-            will-change: scroll-position;
-        }
+        .will-change-scroll { will-change: scroll-position; }
 
         /* 使用 GPU 加速 */
         .log-item,
-        .spinner {
-            transform: translateZ(0);
-        }
+        .spinner { transform: translateZ(0); }
 
-        /* Dark Mode */
-        .dark {
-            background-color: hsl(222.2 84% 4.9%);
-            color: hsl(210 40% 98%);
-        }
-
-        .dark .bg-white {
-            background-color: hsl(222.2 47.4% 11.2%);
-        }
-
-        .dark .bg-slate-50 {
-            background-color: hsl(222.2 84% 4.9%);
-        }
-
-        .dark .border-slate-200 {
-            border-color: hsl(217.2 32.6% 17.5%);
-        }
-
-        .dark .text-slate-900 {
-            color: hsl(210 40% 98%);
-        }
-
-        .dark .text-slate-600 {
-            color: hsl(215 20.2% 65.1%);
-        }
-
-        .dark .text-slate-700 {
-            color: hsl(215 16.3% 46.9%);
-        }
-
-        .dark .text-slate-500 {
-            color: hsl(215.4 16.3% 46.9%);
-        }
-
+        /* Dark Mode overrides */
+        .dark { background-color: hsl(222.2 84% 4.9%); color: hsl(210 40% 98%); }
+        .dark .bg-white { background-color: hsl(222.2 47.4% 11.2%); }
+        .dark .bg-slate-50 { background-color: hsl(222.2 84% 4.9%); }
+        .dark .border-slate-200 { border-color: hsl(217.2 32.6% 17.5%); }
+        .dark .text-slate-900 { color: hsl(210 40% 98%); }
+        .dark .text-slate-600 { color: hsl(215 20.2% 65.1%); }
+        .dark .text-slate-700 { color: hsl(215 16.3% 46.9%); }
+        .dark .text-slate-500 { color: hsl(215.4 16.3% 46.9%); }
         .dark input,
         .dark textarea,
         .dark select {
@@ -145,28 +202,25 @@
             border-color: hsl(217.2 32.6% 17.5%);
             color: hsl(210 40% 98%);
         }
-
-        .dark .bg-slate-100 {
-            background-color: hsl(217.2 32.6% 17.5%);
-        }
-
-        .dark .bg-slate-200 {
-            background-color: hsl(215 27.9% 16.9%);
-        }
+        .dark .bg-slate-100 { background-color: hsl(217.2 32.6% 17.5%); }
+        .dark .bg-slate-200 { background-color: hsl(215 27.9% 16.9%); }
     </style>
 </head>
 
-<body class="bg-slate-50 min-h-screen transition-colors duration-200">
+<body class="bg-slate-50 min-h-screen transition-colors duration-200 relative overflow-hidden">
+    <div class="bg-ambient"></div>
+    <div class="bg-grid"></div>
     <!-- Login Page -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center px-4">
-        <div class="bg-white rounded-lg border border-slate-200 shadow-lg p-8 w-full max-w-md">
-            <div class="text-center mb-6">
-                <svg class="w-16 h-16 text-primary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div id="loginPage" class="min-h-screen flex items-center justify-center px-4 relative z-10">
+        <div class="glass-card card-hover rounded-xl border border-slate-200/60 shadow-2xl p-8 w-full max-w-md">
+            <div class="text-center mb-6 relative">
+                <div class="absolute inset-x-10 -top-4 h-1 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 blur-sm opacity-70"></div>
+                <svg class="w-16 h-16 text-primary mx-auto mb-4 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
                     </path>
                 </svg>
-                <h1 class="text-3xl font-bold text-slate-900">APIKEY-king</h1>
+                <h1 class="text-3xl font-bold text-slate-900 neon-text tracking-tight">APIKEY-king</h1>
                 <p class="text-slate-600 mt-2">API Key Discovery Tool</p>
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
@@ -177,7 +231,7 @@
                         placeholder="请输入密码" required />
                 </div>
                 <button type="submit"
-                    class="w-full px-4 py-2.5 bg-primary text-white rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary">
+                    class="w-full px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md font-semibold hover:from-blue-400 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-blue-400 glow-button transition">
                     登录
                 </button>
             </form>
@@ -185,25 +239,27 @@
     </div>
 
     <!-- Main Dashboard -->
-    <div id="dashboardPage" class="hidden">
+    <div id="dashboardPage" class="hidden relative z-10">
         <!-- Header -->
-        <div class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="glass-card rounded-none border-b border-slate-200/60 shadow-lg">
             <div class="container mx-auto px-4 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <svg class="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
-                            </path>
-                        </svg>
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400/80 via-blue-500/80 to-purple-500/80 flex items-center justify-center text-white shadow-lg ring-1 ring-white/40 animate-[pulseBorder_3s_infinite]">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                                </path>
+                            </svg>
+                        </div>
                         <div>
-                            <h1 class="text-2xl font-bold text-slate-900">APIKEY-king</h1>
+                            <h1 class="text-2xl font-bold text-slate-900 neon-text">APIKEY-king</h1>
                             <p class="text-xs text-slate-500">可视化控制台</p>
                         </div>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="showReportsDialog()"
-                            class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
                             title="扫描报告">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -212,7 +268,7 @@
                             </svg>
                         </button>
                         <button onclick="showConfigDialog()"
-                            class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
                             title="扫描配置">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -222,7 +278,7 @@
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
-                        <button onclick="toggleDarkMode()" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                        <button onclick="toggleDarkMode()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
                             title="切换主题">
                             <svg id="darkModeIcon" class="w-5 h-5" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -232,7 +288,7 @@
                             </svg>
                         </button>
                         <button onclick="showChangePasswordDialog()"
-                            class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
                             title="修改密码">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -241,14 +297,14 @@
                             </svg>
                         </button>
                         <button onclick="window.open('/api/docs', '_blank')"
-                            class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900" title="API文档">
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition" title="API文档">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                                 </path>
                             </svg>
                         </button>
-                        <button onclick="handleLogout()" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                        <button onclick="handleLogout()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
                             title="退出登录">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -264,7 +320,7 @@
         <div class="container mx-auto px-4 py-6 max-w-7xl">
             <!-- Stats Cards with Charts -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="statsCards">
-                <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+                <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-slate-600">扫描文件数</p>
@@ -279,7 +335,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+                <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-slate-600">发现密钥数</p>
@@ -294,7 +350,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+                <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-slate-600">有效密钥数</p>
@@ -495,7 +551,7 @@
             </div>
 
             <!-- Control Panel -->
-            <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-6">
+            <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg mb-6">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-slate-900">扫描控制</h2>
@@ -506,7 +562,7 @@
                     </div>
                     <div class="flex gap-3 mb-4">
                         <button id="btnStart" onclick="handleStartScan()"
-                            class="px-6 py-2.5 bg-success text-white rounded-md font-medium hover:bg-success/90 focus:outline-none focus:ring-2 focus:ring-success flex items-center gap-2">
+                            class="px-6 py-2.5 bg-success text-white rounded-md font-semibold hover:bg-success/90 focus:outline-none focus:ring-2 focus:ring-success flex items-center gap-2 shadow-lg glow-button">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
@@ -517,7 +573,7 @@
                             开始扫描
                         </button>
                         <button id="btnPause" onclick="handlePauseScan()"
-                            class="px-6 py-2.5 bg-amber-500 text-white rounded-md font-medium hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center gap-2 opacity-50 cursor-not-allowed"
+                            class="px-6 py-2.5 bg-amber-500 text-white rounded-md font-semibold hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg glow-button"
                             disabled>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -526,7 +582,7 @@
                             暂停
                         </button>
                         <button id="btnResume" onclick="handleResumeScan()"
-                            class="hidden px-6 py-2.5 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2"
+                            class="hidden px-6 py-2.5 bg-blue-500 text-white rounded-md font-semibold hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 shadow-lg glow-button"
                             disabled>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -538,7 +594,7 @@
                             继续
                         </button>
                         <button id="btnStop" onclick="handleStopScan()"
-                            class="px-6 py-2.5 bg-destructive text-white rounded-md font-medium hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive flex items-center gap-2 opacity-50 cursor-not-allowed"
+                            class="px-6 py-2.5 bg-destructive text-white rounded-md font-semibold hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg glow-button"
                             disabled>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -560,7 +616,7 @@
                             <span class="text-sm text-slate-600">扫描进度</span>
                             <span id="progressText" class="text-sm font-medium text-slate-700">0%</span>
                         </div>
-                        <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden mb-2">
+                        <div class="w-full h-3 bg-slate-200/80 rounded-full overflow-hidden mb-2">
                             <div id="progressBar"
                                 class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
                                 style="width: 0%"></div>
@@ -574,27 +630,27 @@
             </div>
 
             <!-- Logs Panel -->
-            <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-6">
+            <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg mb-6">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-slate-900">实时日志</h2>
                         <button onclick="clearLogs()" class="text-sm text-slate-600 hover:text-slate-900">清空</button>
                     </div>
                     <div id="logsContainer"
-                        class="bg-slate-50 rounded border border-slate-200 p-4 h-96 overflow-y-auto font-mono text-xs space-y-1">
+                        class="rounded border border-white/30 bg-white/10 dark:bg-slate-900/30 p-4 h-96 overflow-y-auto font-mono text-xs space-y-1 will-change-scroll">
                         <div class="text-slate-500">等待日志...</div>
                     </div>
                 </div>
             </div>
 
             <!-- Keys Panel -->
-            <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+            <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-slate-900">发现的密钥</h2>
                         <div class="flex gap-2">
                             <button onclick="exportKeys()"
-                                class="px-4 py-2 text-sm bg-primary text-white rounded hover:bg-primary/90 flex items-center gap-1">
+                                class="px-4 py-2 text-sm bg-primary text-white rounded hover:bg-primary/90 flex items-center gap-1 shadow-md glow-button">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -603,7 +659,7 @@
                                 导出 CSV
                             </button>
                             <button onclick="exportKeysTxt()"
-                                class="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1">
+                                class="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1 shadow-md glow-button">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
