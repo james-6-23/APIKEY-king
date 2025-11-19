@@ -220,7 +220,7 @@
                         d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
                     </path>
                 </svg>
-                <h1 class="text-3xl font-bold text-slate-900 neon-text tracking-tight">APIKEY-king</h1>
+            <h1 class="text-3xl font-bold text-slate-900 neon-text tracking-tight drop-shadow">APIKEY-king</h1>
                 <p class="text-slate-600 mt-2">API Key Discovery Tool</p>
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
@@ -241,11 +241,11 @@
     <!-- Main Dashboard -->
     <div id="dashboardPage" class="hidden relative z-10">
         <!-- Header -->
-        <div class="glass-card rounded-none border-b border-slate-200/60 shadow-lg">
+        <div class="bg-white/85 dark:bg-slate-900/75 backdrop-blur-lg border-b border-white/60 dark:border-slate-700/60 shadow-lg">
             <div class="container mx-auto px-4 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400/80 via-blue-500/80 to-purple-500/80 flex items-center justify-center text-white shadow-lg ring-1 ring-white/40 animate-[pulseBorder_3s_infinite]">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400/90 via-blue-500/90 to-purple-500/90 flex items-center justify-center text-white shadow-lg ring-1 ring-white/40 animate-[pulseBorder_3s_infinite]">
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
@@ -259,7 +259,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button onclick="showReportsDialog()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
                             title="扫描报告">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -268,7 +268,7 @@
                             </svg>
                         </button>
                         <button onclick="showConfigDialog()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
                             title="扫描配置">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -278,7 +278,7 @@
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
-                        <button onclick="toggleDarkMode()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
+                        <button onclick="toggleDarkMode()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
                             title="切换主题">
                             <svg id="darkModeIcon" class="w-5 h-5" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -288,7 +288,7 @@
                             </svg>
                         </button>
                         <button onclick="showChangePasswordDialog()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
                             title="修改密码">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -297,14 +297,14 @@
                             </svg>
                         </button>
                         <button onclick="window.open('/api/docs', '_blank')"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition" title="API文档">
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition" title="API文档">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                                 </path>
                             </svg>
                         </button>
-                        <button onclick="handleLogout()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
+                        <button onclick="handleLogout()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
                             title="退出登录">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -317,7 +317,7 @@
             </div>
         </div>
 
-        <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <div class="container mx-auto px-4 py-8 max-w-7xl">
             <!-- Stats Cards with Charts -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="statsCards">
                 <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
