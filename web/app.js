@@ -2,6 +2,7 @@
 const API_BASE = window.location.origin;
 let authToken = localStorage.getItem('auth_token');
 let ws = null;
+let wsShouldReconnect = false;
 
 // All keys cache for filtering
 let allKeysCache = [];
@@ -9,6 +10,7 @@ let allKeysCache = [];
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initDarkMode();
+    initLogVirtualList();
     if (authToken) {
         verifyAuth();
     } else {
@@ -64,12 +66,18 @@ async function verifyAuth() {
 function handleLogout() {
     localStorage.removeItem('auth_token');
     authToken = null;
-    if (ws) ws.close();
+    wsShouldReconnect = false;
+    disconnectWebSocket();
+    stopStatusPolling();
     showLoginPage();
     showToast('已退出登录', 'success');
 }
 
 function showLoginPage() {
+    wsShouldReconnect = false;
+    stopStatusPolling();
+    disconnectWebSocket();
+
     document.getElementById('loginPage').classList.remove('hidden');
     document.getElementById('dashboardPage').classList.add('hidden');
 }
@@ -77,6 +85,7 @@ function showLoginPage() {
 function showDashboard() {
     document.getElementById('loginPage').classList.add('hidden');
     document.getElementById('dashboardPage').classList.remove('hidden');
+    wsShouldReconnect = true;
     loadConfig();
     loadKeys();
     loadMemoryStats();
@@ -366,6 +375,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function startStatusPolling() {
+    if (statusInterval) {
+        clearInterval(statusInterval);
+        statusInterval = null;
+    }
     loadStatus();
     // 降低轮询频率到5秒，页面不可见时暂停
     statusInterval = setInterval(() => {
@@ -373,6 +386,13 @@ function startStatusPolling() {
             loadStatus();
         }
     }, 5000);
+}
+
+function stopStatusPolling() {
+    if (statusInterval) {
+        clearInterval(statusInterval);
+        statusInterval = null;
+    }
 }
 
 async function loadStatus() {
@@ -439,6 +459,9 @@ function updateScanMode(scanMode) {
 
 // WebSocket for real-time logs
 function connectWebSocket() {
+    if (!wsShouldReconnect) return;
+    if (ws) disconnectWebSocket();
+
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/logs`);
 
@@ -486,9 +509,11 @@ function connectWebSocket() {
     }
 
     ws.onclose = () => {
+        ws = null;
+        if (!wsShouldReconnect) return;
         console.log('WebSocket disconnected, reconnecting in 5s...');
         setTimeout(() => {
-            if (isPageVisible) {
+            if (isPageVisible && wsShouldReconnect) {
                 connectWebSocket();
             }
         }, 5000); // 增加重连间隔
@@ -500,16 +525,58 @@ function connectWebSocket() {
     };
 }
 
-// 超级优化的日志添加 - 最多保留50条
+function disconnectWebSocket() {
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+}
+
+// 日志虚拟列表与批量渲染
+const LOG_ROW_HEIGHT = 20;          // 估算行高（px），影响虚拟滚动
+const LOG_VISIBLE_BUFFER = 10;      // 预渲染缓冲行数
+const LOG_MAX_STORE = 800;          // 最大保留日志条数（内存）
+
+let logStore = [];
 let logBuffer = [];
 let logUpdateScheduled = false;
+let logRenderScheduled = false;
+let logsContainer, logsTopSpacer, logsListEl, logsBottomSpacer;
+let shouldStickToBottom = true;
+
+function initLogVirtualList() {
+    logsContainer = document.getElementById('logsContainer');
+    if (!logsContainer) return;
+
+    // 创建虚拟列表结构
+    logsContainer.innerHTML = '';
+    logsTopSpacer = document.createElement('div');
+    logsBottomSpacer = document.createElement('div');
+    logsListEl = document.createElement('div');
+    logsListEl.id = 'logsVirtualList';
+    logsListEl.className = 'space-y-1';
+
+    logsContainer.appendChild(logsTopSpacer);
+    logsContainer.appendChild(logsListEl);
+    logsContainer.appendChild(logsBottomSpacer);
+
+    logsContainer.addEventListener('scroll', handleLogScroll);
+    renderLogsVirtual(); // 初次渲染占位
+}
+
+function handleLogScroll() {
+    if (!logsContainer) return;
+    const threshold = 40;
+    const distanceToBottom = logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight;
+    shouldStickToBottom = distanceToBottom <= threshold;
+    scheduleLogRender();
+}
 
 function addLogEntry(log) {
     logBuffer.push(log);
     
     if (!logUpdateScheduled) {
         logUpdateScheduled = true;
-        // 使用更短的延迟，确保实时显示
         setTimeout(() => {
             flushLogBuffer();
             logUpdateScheduled = false;
@@ -519,18 +586,50 @@ function addLogEntry(log) {
 
 function flushLogBuffer() {
     if (logBuffer.length === 0) return;
-    
-    const container = document.getElementById('logsContainer');
-    
-    // Clear placeholder
-    if (container.textContent.includes('等待日志')) {
-        container.innerHTML = '';
+
+    // 追加到总存储，预裁剪
+    logStore.push(...logBuffer);
+    if (logStore.length > LOG_MAX_STORE) {
+        logStore = logStore.slice(logStore.length - LOG_MAX_STORE);
+    }
+    logBuffer = [];
+
+    scheduleLogRender();
+}
+
+function scheduleLogRender() {
+    if (logRenderScheduled) return;
+    logRenderScheduled = true;
+    requestAnimationFrame(() => {
+        renderLogsVirtual();
+        logRenderScheduled = false;
+    });
+}
+
+function renderLogsVirtual() {
+    if (!logsContainer || !logsListEl || !logsTopSpacer || !logsBottomSpacer) return;
+
+    const total = logStore.length;
+    if (total === 0) {
+        logsListEl.innerHTML = '<div class="text-slate-500">等待日志...</div>';
+        logsTopSpacer.style.height = '0px';
+        logsBottomSpacer.style.height = '0px';
+        return;
     }
 
+    const containerHeight = logsContainer.clientHeight || 1;
+    const visibleCount = Math.ceil(containerHeight / LOG_ROW_HEIGHT) + LOG_VISIBLE_BUFFER * 2;
+
+    // 根据滚动位置计算窗口
+    const startIndex = Math.max(0, Math.floor((logsContainer.scrollTop || 0) / LOG_ROW_HEIGHT) - LOG_VISIBLE_BUFFER);
+    const endIndex = Math.min(total, startIndex + visibleCount);
+
+    logsTopSpacer.style.height = `${startIndex * LOG_ROW_HEIGHT}px`;
+    logsBottomSpacer.style.height = `${(total - endIndex) * LOG_ROW_HEIGHT}px`;
+
     const fragment = document.createDocumentFragment();
-    
-    // 处理缓冲区中的日志
-    logBuffer.forEach(log => {
+    for (let i = startIndex; i < endIndex; i++) {
+        const log = logStore[i];
         const time = new Date(log.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
         
         let icon = '•';
@@ -553,25 +652,22 @@ function flushLogBuffer() {
         const logDiv = document.createElement('div');
         logDiv.className = 'flex gap-2 text-xs';
         logDiv.innerHTML = `<span class="text-slate-400">[${time}]</span><span class="${color}">${icon}</span><span>${escapeHtml(log.message)}</span>`;
-        
         fragment.appendChild(logDiv);
-    });
-    
-    container.appendChild(fragment);
-    logBuffer = [];
-
-    // 只保留最后50条日志
-    while (container.children.length > 50) {
-        container.removeChild(container.firstChild);
     }
-    
-    // 自动滚动到底部（显示最新日志）
-    container.scrollTop = container.scrollHeight;
+
+    logsListEl.innerHTML = '';
+    logsListEl.appendChild(fragment);
+
+    if (shouldStickToBottom) {
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
 }
 
 function clearLogs() {
-    const container = document.getElementById('logsContainer');
-    container.innerHTML = '<div class="text-slate-500">日志已清空</div>';
+    logStore = [];
+    logBuffer = [];
+    shouldStickToBottom = true;
+    scheduleLogRender();
 }
 
 // Keys Management
@@ -1340,4 +1436,3 @@ function updateDarkModeIcon(isDark) {
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
     }
 }
-

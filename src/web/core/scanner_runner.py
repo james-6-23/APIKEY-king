@@ -44,7 +44,12 @@ class ScannerRunner:
             self._apply_scan_mode_config(app_config, scan_mode)
 
             # Create GitHub service with log callback
-            github_service = GitHubService(app_config, log_callback=self._create_log_callback())
+            performance_cfg = self.config.get("performance") if isinstance(self.config, dict) else None
+            github_service = GitHubService(
+                app_config,
+                log_callback=self._create_log_callback(),
+                performance_config=performance_cfg
+            )
             file_service = FileService(app_config.data_path)
 
             # Create extractors and validators with custom config
@@ -328,4 +333,3 @@ class ScannerRunner:
             return 'siliconflow'
         else:
             return 'unknown'
-

@@ -6,15 +6,16 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 
+import os
 import jwt
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ..database.database import db
 
 # Constants
-SECRET_KEY = "apikey-king-secret-key-change-in-production"
-DEFAULT_PASSWORD = "kyx200328"  # 仅用于首次启动
-TOKEN_EXPIRE_HOURS = 24
+SECRET_KEY = os.getenv("APIKEY_KING_SECRET", "apikey-king-secret-key-change-in-production")
+DEFAULT_PASSWORD = os.getenv("APIKEY_KING_DEFAULT_PASSWORD", "kyx200328")  # 仅用于首次启动
+TOKEN_EXPIRE_HOURS = int(os.getenv("APIKEY_KING_TOKEN_EXPIRE_HOURS", "24"))
 
 security = HTTPBearer()
 

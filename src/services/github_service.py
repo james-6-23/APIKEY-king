@@ -7,6 +7,7 @@ import random
 import time
 from typing import Dict, List, Optional, Any
 import requests
+from requests.adapters import HTTPAdapter
 
 from ..models.config import AppConfig, ProxyConfig
 
@@ -14,13 +15,25 @@ from ..models.config import AppConfig, ProxyConfig
 class GitHubService:
     """Service for GitHub API interactions."""
     
-    def __init__(self, config: AppConfig, log_callback=None):
+    def __init__(self, config: AppConfig, log_callback=None, performance_config: Optional[Dict[str, Any]] = None):
         self.config = config
         self.tokens = config.github.tokens
         self.api_url = config.github.api_url
         self.proxies = config.get_proxy_configs()
         self._token_ptr = 0
         self.log_callback = log_callback or print  # Use callback or default to print
+
+        performance_config = performance_config or {}
+        self.request_timeout = float(performance_config.get("github_timeout", 30))
+        self.max_retries = int(performance_config.get("max_retries", 5))
+        self.request_delay = float(performance_config.get("request_delay", 1.0))
+        self.max_pages = int(performance_config.get("max_pages", 10))
+
+        # Connection pooling to cut down TLS handshakes under high volume
+        self.session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=10, pool_maxsize=30)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
     
     def _get_next_token(self) -> Optional[str]:
         """Get next token from rotation."""
@@ -42,7 +55,7 @@ class GitHubService:
             'https': proxy_config.https
         } if proxy_config.http or proxy_config.https else None
     
-    def search_code(self, query: str, max_retries: int = 5) -> Dict[str, Any]:
+    def search_code(self, query: str, max_retries: Optional[int] = None) -> Dict[str, Any]:
         """
         Search GitHub code with the given query.
         
@@ -53,6 +66,13 @@ class GitHubService:
         Returns:
             Dictionary containing search results
         """
+        retry_limit = max_retries if max_retries is not None else self.max_retries
+        if retry_limit < 1:
+            retry_limit = 1
+
+        page_limit = self.max_pages if self.max_pages > 0 else 10
+        request_timeout = self.request_timeout if self.request_timeout > 0 else 30
+
         all_items = []
         total_count = 0
         expected_total = None
@@ -63,11 +83,11 @@ class GitHubService:
         failed_requests = 0
         rate_limit_hits = 0
         
-        for page in range(1, 11):  # Max 10 pages
+        for page in range(1, page_limit + 1):
             page_result = None
             page_success = False
             
-            for attempt in range(1, max_retries + 1):
+            for attempt in range(1, retry_limit + 1):
                 current_token = self._get_next_token()
                 
                 headers = {
@@ -87,12 +107,12 @@ class GitHubService:
                 try:
                     total_requests += 1
                     proxies = self._get_random_proxy()
-                    
-                    response = requests.get(
+
+                    response = self.session.get(
                         self.api_url,
                         headers=headers,
                         params=params,
-                        timeout=30,
+                        timeout=request_timeout,
                         proxies=proxies
                     )
                     
@@ -117,12 +137,12 @@ class GitHubService:
                         
                         wait = min(2 ** attempt + random.uniform(0, 1), 120)
                         if attempt >= 2:
-                            self.log_callback(f"⚠️ Rate limit hit (attempt {attempt}/{max_retries}) - waiting {wait:.1f}s")
+                            self.log_callback(f"⚠️ Rate limit hit (attempt {attempt}/{retry_limit}) - waiting {wait:.1f}s")
                         time.sleep(wait)
                         continue
                     else:
-                        if attempt == max_retries:
-                            self.log_callback(f"❌ HTTP {status} error after {max_retries} attempts on page {page}")
+                        if attempt == retry_limit:
+                            self.log_callback(f"❌ HTTP {status} error after {retry_limit} attempts on page {page}")
                         time.sleep(min(2 ** attempt, 30))
                         continue
                         
@@ -130,8 +150,8 @@ class GitHubService:
                     failed_requests += 1
                     wait = min(2 ** attempt, 30)
                     
-                    if attempt == max_retries:
-                        self.log_callback(f"❌ Network error after {max_retries} attempts on page {page}: {type(e).__name__}")
+                    if attempt == retry_limit:
+                        self.log_callback(f"❌ Network error after {retry_limit} attempts on page {page}: {type(e).__name__}")
                     
                     time.sleep(wait)
                     continue
@@ -162,8 +182,10 @@ class GitHubService:
             if expected_total and len(all_items) >= expected_total:
                 break
             
-            if page < 10:
-                sleep_time = random.uniform(0.5, 1.5)
+            if page < page_limit:
+                base_delay = max(self.request_delay, 0)
+                jitter = random.uniform(0, max(base_delay, 0.5))
+                sleep_time = base_delay + jitter
                 self.log_callback(f"[WAIT] Processing query page {page}, items: {current_page_count}, sleep: {sleep_time:.1f}s")
                 time.sleep(sleep_time)
         
@@ -215,11 +237,11 @@ class GitHubService:
             proxies = self._get_random_proxy()
             
             self.log_callback(f"🌐 Fetching: {metadata_url}")
-            metadata_response = requests.get(
+            metadata_response = self.session.get(
                 metadata_url,
                 headers=headers,
                 proxies=proxies,
-                timeout=30
+                timeout=self.request_timeout if self.request_timeout > 0 else 30
             )
             
             metadata_response.raise_for_status()
@@ -242,11 +264,11 @@ class GitHubService:
                 self.log_callback(f"⚠️ No download URL found")
                 return None
             
-            content_response = requests.get(
+            content_response = self.session.get(
                 download_url,
                 headers=headers,
                 proxies=proxies,
-                timeout=30
+                timeout=self.request_timeout if self.request_timeout > 0 else 30
             )
             
             content_response.raise_for_status()

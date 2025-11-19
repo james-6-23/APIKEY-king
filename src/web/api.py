@@ -3,9 +3,13 @@ FastAPI web server for APIKEY-king visualization.
 Main application entry point.
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from .routers import (
     auth_router,
@@ -39,10 +43,27 @@ app = FastAPI(
     ]
 )
 
+# Lightweight security headers
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add basic security-related headers."""
+
+    async def dispatch(self, request, call_next):
+        response: Response = await call_next(request)
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Permissions-Policy", "accelerometer=(), camera=(), microphone=()")
+        return response
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+app.add_middleware(SecurityHeadersMiddleware)
+
+allowed_origins = [origin.strip() for origin in os.getenv("APIKEY_KING_CORS", "*").split(",") if origin.strip()]
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
