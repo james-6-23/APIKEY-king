@@ -37,7 +37,7 @@ async function handleLogin(event) {
         const data = await response.json();
         authToken = data.access_token;
         localStorage.setItem('auth_token', authToken);
-        
+
         showToast('登录成功', 'success');
         showDashboard();
     } catch (error) {
@@ -97,11 +97,11 @@ function showDashboard() {
 // Config Functions
 async function handleSaveConfig(event) {
     event.preventDefault();
-    
+
     // 检查是否在模态框中（通过检查ID后缀）
     const isModal = event.target.id === 'configFormModal';
     const suffix = isModal ? 'Modal' : '';
-    
+
     const tokensText = document.getElementById('githubTokens' + suffix).value;
     const tokens = tokensText.split('\n').map(t => t.trim()).filter(t => t);
     const proxy = document.getElementById('proxy' + suffix).value.trim();
@@ -157,7 +157,7 @@ async function handleSaveConfig(event) {
         if (!response.ok) throw new Error('配置保存失败');
 
         showToast('配置保存成功', 'success');
-        
+
         // 如果在模态框中，关闭模态框
         if (isModal) {
             hideConfigDialog();
@@ -180,18 +180,18 @@ async function loadConfig() {
                 if (data.config.github_tokens && data.config.github_tokens.length > 0) {
                     document.getElementById('githubTokens').value = data.config.github_tokens.join('\n');
                 }
-                
+
                 // 加载其他配置
                 document.getElementById('proxy').value = data.config.proxy || '';
                 document.getElementById('dateRange').value = data.config.date_range_days || 730;
-                
+
                 const scanMode = data.config.scan_mode || 'compatible';
                 document.querySelector(`input[name="scanMode"][value="${scanMode}"]`).checked = true;
-                
+
                 // 加载验证器配置
                 if (data.config.validators) {
                     const validators = data.config.validators;
-                    
+
                     if (validators.gemini) {
                         document.getElementById('geminiEnabled').checked = validators.gemini.enabled;
                         document.getElementById('geminiModel').value = validators.gemini.model || 'gemini-2.0-flash-exp';
@@ -414,7 +414,7 @@ async function loadStatus() {
 }
 
 // Throttled stats update
-const updateStats = window.perfUtils.throttle(function(stats) {
+const updateStats = window.perfUtils.throttle(function (stats) {
     document.getElementById('statFiles').textContent = stats.total_files || 0;
     document.getElementById('statKeys').textContent = stats.total_keys || 0;
     document.getElementById('statValidKeys').textContent = stats.valid_keys || 0;
@@ -424,10 +424,10 @@ function updateProgress(stats) {
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
     const currentQuery = document.getElementById('currentQuery');
-    
+
     const percent = stats.progress_percent || 0;
     const query = stats.current_query || '-';
-    
+
     if (progressBar) progressBar.style.width = `${percent}%`;
     if (progressText) progressText.textContent = `${percent}% (${stats.current_query_index || 0}/${stats.total_queries || 0})`;
     if (currentQuery) currentQuery.textContent = query;
@@ -436,11 +436,11 @@ function updateProgress(stats) {
 function updateScanMode(scanMode) {
     const modeContainer = document.getElementById('currentScanMode');
     const modeText = document.getElementById('scanModeText');
-    
+
     if (scanMode && modeContainer && modeText) {
         // 显示模式信息
         modeContainer.classList.remove('hidden');
-        
+
         // 转换模式名称为友好显示
         const modeNames = {
             'compatible': '全部平台',
@@ -449,7 +449,7 @@ function updateScanMode(scanMode) {
             'modelscope-only': 'ModelScope',
             'siliconflow-only': 'SiliconFlow'
         };
-        
+
         modeText.textContent = modeNames[scanMode] || scanMode;
     } else if (modeContainer) {
         // 隐藏模式信息
@@ -474,7 +474,7 @@ function connectWebSocket() {
         try {
             const message = JSON.parse(event.data);
             messageQueue.push(message);
-            
+
             // 立即处理消息（实时显示）
             if (!processingQueue) {
                 processingQueue = true;
@@ -492,7 +492,7 @@ function connectWebSocket() {
         // 处理队列中的所有消息（实时显示）
         while (messageQueue.length > 0) {
             const message = messageQueue.shift();
-            
+
             if (message.event === 'log') {
                 // 显示所有类型的日志
                 addLogEntry(message.data);
@@ -574,7 +574,7 @@ function handleLogScroll() {
 
 function addLogEntry(log) {
     logBuffer.push(log);
-    
+
     if (!logUpdateScheduled) {
         logUpdateScheduled = true;
         setTimeout(() => {
@@ -631,10 +631,10 @@ function renderLogsVirtual() {
     for (let i = startIndex; i < endIndex; i++) {
         const log = logStore[i];
         const time = new Date(log.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        
+
         let icon = '•';
         let color = 'text-slate-600';
-        
+
         if (log.type === 'success') {
             icon = '✓';
             color = 'text-success';
@@ -702,26 +702,26 @@ async function loadKeys(keyType = null, search = null, page = 1) {
 }
 
 // Optimized search with debounce
-const handleKeySearch = window.perfUtils.debounce(function() {
+const handleKeySearch = window.perfUtils.debounce(function () {
     const search = document.getElementById('keySearch').value.trim();
     const keyType = document.getElementById('keyTypeFilter').value;
-    
+
     let filteredKeys = allKeysCache;
-    
+
     // Filter by type
     if (keyType) {
         filteredKeys = filteredKeys.filter(key => key.type.toLowerCase() === keyType);
     }
-    
+
     // Filter by search
     if (search) {
         const searchLower = search.toLowerCase();
-        filteredKeys = filteredKeys.filter(key => 
+        filteredKeys = filteredKeys.filter(key =>
             key.key.toLowerCase().includes(searchLower) ||
             key.source.toLowerCase().includes(searchLower)
         );
     }
-    
+
     displayKeys(filteredKeys);
 }, 300);
 
@@ -764,24 +764,24 @@ function displayKeys(keys) {
             : '<span class="text-slate-400">-</span>';
 
         tr.innerHTML = `
-            <td class="px-3 py-2 text-center">
+            <td class="px-4 py-3 text-center">
                 <input type="checkbox" class="key-checkbox w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
                     data-key="${escapeAttribute(key.key)}" data-type="${escapeAttribute(key.type)}" onchange="updateSelectedCount()" />
             </td>
-            <td class="px-3 py-2">
+            <td class="px-4 py-3">
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded ${getKeyTypeBadge(key.type)}">
                     ${key.type.toUpperCase()}
                 </span>
             </td>
-            <td class="px-3 py-2 font-mono text-xs">${escapeHtml(key.key.substring(0, 20))}...</td>
-            <td class="px-3 py-2 text-xs">${balanceDisplay}</td>
-            <td class="px-3 py-2 text-xs">
+            <td class="px-4 py-3 font-mono text-xs">${escapeHtml(key.key.substring(0, 20))}...</td>
+            <td class="px-4 py-3 text-xs">${balanceDisplay}</td>
+            <td class="px-4 py-3 text-xs">
                 <a href="${escapeHtml(key.url)}" target="_blank" class="text-blue-600 hover:underline">
                     ${escapeHtml(key.source)}
                 </a>
             </td>
-            <td class="px-3 py-2 text-xs text-slate-600">${key.found_at}</td>
-            <td class="px-3 py-2 text-center">
+            <td class="px-4 py-3 text-xs text-slate-600">${key.found_at}</td>
+            <td class="px-4 py-3 text-center">
                 <button onclick="copyKey('${escapeAttribute(key.key)}')" class="px-3 py-1 text-xs bg-primary text-white rounded hover:bg-primary/90">
                     复制
                 </button>
@@ -801,17 +801,17 @@ function displayKeys(keys) {
 function updatePagination(totalKeys, totalPages) {
     const paginationContainer = document.getElementById('paginationContainer');
     if (!paginationContainer) return;
-    
+
     if (totalKeys === 0 || totalPages <= 1) {
         paginationContainer.classList.add('hidden');
         return;
     }
-    
+
     paginationContainer.classList.remove('hidden');
-    
+
     const startIdx = (currentPage - 1) * keysPerPage + 1;
     const endIdx = Math.min(currentPage * keysPerPage, totalKeys);
-    
+
     paginationContainer.innerHTML = `
         <div class="flex items-center justify-between">
             <div class="text-sm text-slate-600">
@@ -965,11 +965,11 @@ async function copyKey(key) {
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            
+
             try {
                 const successful = document.execCommand('copy');
                 document.body.removeChild(textArea);
-                
+
                 if (successful) {
                     showToast('已复制到剪贴板', 'success');
                 } else {
@@ -1030,7 +1030,7 @@ async function exportKeys() {
 async function exportKeysTxt() {
     // 导出当前过滤后的密钥
     const keysToExport = getFilteredKeys();
-    
+
     if (keysToExport.length === 0) {
         showToast('没有可导出的数据', 'error');
         return;
@@ -1043,7 +1043,7 @@ async function exportKeysTxt() {
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    
+
     // 文件名包含类型信息
     const typeText = currentKeyType ? `_${currentKeyType}` : '';
     link.download = `apikeys${typeText}_${new Date().toISOString().split('T')[0]}.txt`;
@@ -1056,23 +1056,23 @@ async function exportKeysTxt() {
 function getFilteredKeys() {
     const search = document.getElementById('keySearch').value.trim();
     const keyType = document.getElementById('keyTypeFilter').value;
-    
+
     let filteredKeys = allKeysCache;
-    
+
     // Filter by type
     if (keyType) {
         filteredKeys = filteredKeys.filter(key => key.type.toLowerCase() === keyType);
     }
-    
+
     // Filter by search
     if (search) {
         const searchLower = search.toLowerCase();
-        filteredKeys = filteredKeys.filter(key => 
+        filteredKeys = filteredKeys.filter(key =>
             key.key.toLowerCase().includes(searchLower) ||
             key.source.toLowerCase().includes(searchLower)
         );
     }
-    
+
     return filteredKeys;
 }
 
@@ -1080,17 +1080,17 @@ function getFilteredKeys() {
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
-    
+
     const bgColor = type === 'success' ? 'bg-success' : 'bg-destructive';
-    const icon = type === 'success' 
+    const icon = type === 'success'
         ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
         : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-    
+
     toast.className = `toast ${bgColor} text-white px-4 py-3 rounded-md shadow-lg flex items-center gap-3`;
     toast.innerHTML = `${icon}<span class="text-sm font-medium">${escapeHtml(message)}</span>`;
-    
+
     container.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(100px)';
@@ -1157,7 +1157,7 @@ async function loadQueryStats() {
     try {
         const scanMode = document.querySelector('input[name="scanMode"]:checked').value;
         const mode = scanMode === 'compatible' ? 'default' : scanMode.replace('-only', '');
-        
+
         const response = await fetch(`${API_BASE}/api/queries?mode=${mode}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
@@ -1179,7 +1179,7 @@ function showConfigDialog() {
     const configCard = document.getElementById('configCardOld');
     const modalContent = document.getElementById('configModalContent');
     const modal = document.getElementById('configModal');
-    
+
     if (configCard && modalContent && modal) {
         // 只在第一次时移动内容
         if (modalContent.children.length === 0) {
@@ -1191,14 +1191,14 @@ function showConfigDialog() {
                 clonedForm.id = 'configFormModal';
                 clonedForm.onsubmit = handleSaveConfig;
                 modalContent.appendChild(clonedForm);
-                
+
                 // 同步ID以避免冲突，并更新name属性
                 modalContent.querySelectorAll('[id]').forEach(el => {
                     if (el.id !== 'configFormModal') {
                         el.id = el.id + 'Modal';
                     }
                 });
-                
+
                 // 更新radio按钮的name属性
                 modalContent.querySelectorAll('input[type="radio"]').forEach(el => {
                     if (el.name && !el.name.endsWith('Modal')) {
@@ -1207,7 +1207,7 @@ function showConfigDialog() {
                 });
             }
         }
-        
+
         // 显示模态框
         modal.classList.remove('hidden');
         // 加载最新配置
@@ -1237,22 +1237,22 @@ async function loadConfigToModal() {
                 if (tokensInput && data.config.github_tokens && data.config.github_tokens.length > 0) {
                     tokensInput.value = data.config.github_tokens.join('\n');
                 }
-                
+
                 // 加载其他配置
                 const proxyInput = document.getElementById('proxyModal');
                 if (proxyInput) proxyInput.value = data.config.proxy || '';
-                
+
                 const dateRangeInput = document.getElementById('dateRangeModal');
                 if (dateRangeInput) dateRangeInput.value = data.config.date_range_days || 730;
-                
+
                 const scanMode = data.config.scan_mode || 'compatible';
                 const scanModeInput = document.querySelector(`input[name="scanModeModal"][value="${scanMode}"]`);
                 if (scanModeInput) scanModeInput.checked = true;
-                
+
                 // 加载验证器配置
                 if (data.config.validators) {
                     const validators = data.config.validators;
-                    
+
                     if (validators.gemini) {
                         const geminiEnabled = document.getElementById('geminiEnabledModal');
                         const geminiModel = document.getElementById('geminiModelModal');
@@ -1287,7 +1287,7 @@ async function loadConfigToModal() {
                     const githubTimeout = document.getElementById('githubTimeoutModal');
                     const validationTimeout = document.getElementById('validationTimeoutModal');
                     const maxRetries = document.getElementById('maxRetriesModal');
-                    
+
                     if (maxConcurrent) maxConcurrent.value = perf.max_concurrent_files || 5;
                     if (requestDelay) requestDelay.value = perf.request_delay || 1.0;
                     if (githubTimeout) githubTimeout.value = perf.github_timeout || 30;
@@ -1335,7 +1335,7 @@ async function loadReports() {
 
 function displayReports(reports) {
     const container = document.getElementById('reportsContent');
-    
+
     if (reports.length === 0) {
         container.innerHTML = `
             <div class="text-center text-slate-500 py-12">
@@ -1348,16 +1348,16 @@ function displayReports(reports) {
         `;
         return;
     }
-    
+
     // 创建报告卡片网格
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
-    
+
     reports.forEach(report => {
         const card = createReportCard(report);
         grid.appendChild(card);
     });
-    
+
     container.innerHTML = '';
     container.appendChild(grid);
 }
@@ -1532,7 +1532,7 @@ function hideChangePasswordDialog() {
 
 async function handleChangePassword(event) {
     event.preventDefault();
-    
+
     const oldPassword = document.getElementById('oldPassword').value;
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
@@ -1567,7 +1567,7 @@ async function handleChangePassword(event) {
 
         showToast('密码修改成功，请重新登录', 'success');
         hideChangePasswordDialog();
-        
+
         // 自动登出
         setTimeout(() => {
             handleLogout();
@@ -1595,7 +1595,7 @@ function toggleDarkMode() {
 
 function updateDarkModeIcon(isDark) {
     const icon = document.getElementById('darkModeIcon');
-    
+
     if (isDark) {
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
     } else {
