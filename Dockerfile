@@ -31,7 +31,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy project files
 COPY src/ ./src/
 COPY config/ ./config/
-COPY web/ ./web/
+COPY frontend/ ./frontend/
 
 # Create data directory (only need database file)
 RUN mkdir -p /app/data

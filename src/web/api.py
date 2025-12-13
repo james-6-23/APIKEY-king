@@ -90,7 +90,7 @@ async def health_check():
     return {"status": "ok", "service": "APIKEY-king"}
 
 # Static files (frontend) - must be last
-app.mount("/", StaticFiles(directory="web", html=True), name="static")
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 
 
 if __name__ == "__main__":
