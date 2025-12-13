@@ -163,6 +163,13 @@ class ScannerRunner:
                                     if validation_result.is_valid:
                                         key_type = self._determine_key_type(key)
 
+                                        # 从 metadata 中提取余额信息（目前只有 siliconflow 支持）
+                                        balance = None
+                                        if validation_result.metadata:
+                                            total_balance = validation_result.metadata.get('total_balance')
+                                            if total_balance:
+                                                balance = total_balance
+
                                         # 保存到数据库
                                         db.save_key(
                                             key_value=key,
@@ -172,7 +179,8 @@ class ScannerRunner:
                                             source_url=item.get('html_url', ''),
                                             is_valid=True,
                                             validation_status='valid',
-                                            validation_message=None
+                                            validation_message=None,
+                                            balance=balance
                                         )
 
                                         self.stats["valid_keys"] += 1
@@ -188,6 +196,7 @@ class ScannerRunner:
 
                         # 标记查询已处理
                         db.add_processed_query(normalized_query)
+                        self.stats["queries_completed"] = self.stats.get("queries_completed", 0) + 1
 
                     except Exception as e:
                         self.log_service.add_log("error", f"Error processing query: {str(e)}")

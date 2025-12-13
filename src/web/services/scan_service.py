@@ -159,22 +159,37 @@ class ScanService:
 
     def _handle_scan_finished(self, completed: bool):
         """Handle cleanup and optional report creation when scan stops."""
+        # 只要是正常完成的扫描且有扫描模式，就生成报告
         if completed and self._current_scan_mode:
-            if (
-                self._stats.get("initial_unprocessed_queries", 0) > 0
-                and self._stats.get("remaining_queries", 0) == 0
-            ):
-                from ..services.report_service import ReportService
+            # 只要处理过查询或扫描过文件，就生成报告
+            has_activity = (
+                self._stats.get("total_files", 0) > 0 or
+                self._stats.get("queries_completed", 0) > 0 or
+                self._stats.get("valid_keys", 0) > 0
+            )
 
-                report_svc = ReportService()
-                start_time = self._scan_start_time or datetime.now()
-                end_time = datetime.now()
-                report_svc.create_report(
-                    self._stats,
-                    self._current_scan_mode,
-                    start_time,
-                    end_time
-                )
+            if has_activity:
+                try:
+                    from ..services.report_service import ReportService
+
+                    report_svc = ReportService()
+                    start_time = self._scan_start_time or datetime.now()
+                    end_time = datetime.now()
+                    report = report_svc.create_report(
+                        self._stats,
+                        self._current_scan_mode,
+                        start_time,
+                        end_time
+                    )
+                    log_svc = get_log_service()
+                    log_svc.add_log("success", f"Scan report created: #{report.get('id')}", {
+                        "total_files": self._stats.get("total_files", 0),
+                        "valid_keys": self._stats.get("valid_keys", 0),
+                        "duration": f"{int((end_time - start_time).total_seconds())}s"
+                    })
+                except Exception as e:
+                    log_svc = get_log_service()
+                    log_svc.add_log("error", f"Failed to create report: {str(e)}")
 
         if not completed:
             # 如果扫描被终止，保留已统计信息供下一次恢复

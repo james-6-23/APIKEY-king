@@ -24,23 +24,31 @@ class ReportService:
             return
         self._initialized = True
     
-    def create_report(self, stats: Dict, scan_mode: str) -> Dict:
+    def create_report(self, stats: Dict, scan_mode: str,
+                       start_time: datetime = None, end_time: datetime = None) -> Dict:
         """Create a scan report."""
+        now = datetime.now()
+        start = start_time or now
+        end = end_time or now
+
+        # 计算持续时间
+        duration_seconds = int((end - start).total_seconds()) if start and end else 0
+
         report = {
             "scan_mode": scan_mode,
-            "start_time": datetime.now().isoformat(),
-            "end_time": datetime.now().isoformat(),
+            "start_time": start.isoformat() if isinstance(start, datetime) else start,
+            "end_time": end.isoformat() if isinstance(end, datetime) else end,
             "total_files": stats.get("total_files", 0),
             "total_keys": stats.get("total_keys", 0),
             "valid_keys": stats.get("valid_keys", 0),
-            "queries_processed": stats.get("total_queries", 0),
-            "duration_seconds": 0  # 将在扫描结束时更新
+            "queries_processed": stats.get("queries_completed", 0) or stats.get("total_queries", 0),
+            "duration_seconds": duration_seconds
         }
-        
+
         # 保存到数据库
         report_id = db.save_scan_report(report)
         report["id"] = report_id
-        
+
         return report
     
     def update_report(self, report_id: int, stats: Dict, end_time: str = None):
@@ -61,7 +69,23 @@ class ReportService:
     def get_report(self, report_id: int) -> Optional[Dict]:
         """Get a specific report."""
         return db.get_scan_report(report_id)
-    
+
+    def get_report_keys(self, report_id: int) -> List[str]:
+        """获取报告关联的密钥列表."""
+        report = db.get_scan_report(report_id)
+        if not report:
+            return []
+
+        start_time = report.get('started_at')
+        end_time = report.get('ended_at')
+
+        if not start_time or not end_time:
+            return []
+
+        # 根据时间范围获取密钥
+        keys = db.get_keys_by_time_range(start_time, end_time, is_valid=True)
+        return [key.get('key_value') for key in keys if key.get('key_value')]
+
     def delete_report(self, report_id: int):
         """Delete a scan report."""
         db.delete_scan_report(report_id)

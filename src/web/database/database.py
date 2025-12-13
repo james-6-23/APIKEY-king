@@ -1,8 +1,6 @@
 """
 Database module for APIKEY-king.
 使用 SQLite 实现轻量级数据持久化
-
-⚠️ This file is deprecated. Please use src/web/database/database.py instead.
 """
 
 import sqlite3
@@ -64,6 +62,7 @@ class Database:
                 is_valid BOOLEAN DEFAULT 1,
                 validation_status TEXT,
                 validation_message TEXT,
+                balance TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(key_value, key_type)
@@ -114,9 +113,22 @@ class Database:
                 scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
+
+        # 迁移：为旧数据库添加 balance 列
+        self._migrate_add_balance_column(cursor)
+
         conn.commit()
         conn.close()
+
+    def _migrate_add_balance_column(self, cursor):
+        """迁移：为 api_keys 表添加 balance 列（如果不存在）."""
+        try:
+            cursor.execute("PRAGMA table_info(api_keys)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'balance' not in columns:
+                cursor.execute("ALTER TABLE api_keys ADD COLUMN balance TEXT")
+        except Exception:
+            pass  # 忽略迁移错误
     
     # ===== 系统设置相关 =====
     
@@ -213,29 +225,30 @@ class Database:
         return configs
     
     # ===== 密钥相关 =====
-    
+
     def save_key(self, key_value: str, key_type: str, source_repo: str = None,
                  source_file: str = None, source_url: str = None,
                  is_valid: bool = True, validation_status: str = None,
-                 validation_message: str = None):
+                 validation_message: str = None, balance: str = None):
         """保存密钥."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            INSERT INTO api_keys 
-            (key_value, key_type, source_repo, source_file, source_url, 
-             is_valid, validation_status, validation_message, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO api_keys
+            (key_value, key_type, source_repo, source_file, source_url,
+             is_valid, validation_status, validation_message, balance, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(key_value, key_type) DO UPDATE SET
                 is_valid = excluded.is_valid,
                 validation_status = excluded.validation_status,
                 validation_message = excluded.validation_message,
+                balance = excluded.balance,
                 updated_at = excluded.updated_at
         """, (key_value, key_type, source_repo, source_file, source_url,
-              is_valid, validation_status, validation_message,
+              is_valid, validation_status, validation_message, balance,
               datetime.now(), datetime.now()))
-        
+
         conn.commit()
         conn.close()
     
@@ -262,7 +275,24 @@ class Database:
         conn.close()
         
         return [dict(row) for row in rows]
-    
+
+    def get_keys_by_time_range(self, start_time: str, end_time: str, is_valid: bool = True) -> List[Dict]:
+        """根据时间范围获取密钥."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT * FROM api_keys
+            WHERE created_at >= ? AND created_at <= ? AND is_valid = ?
+            ORDER BY created_at DESC
+        """
+
+        cursor.execute(query, (start_time, end_time, is_valid))
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [dict(row) for row in rows]
+
     def get_key_count(self, key_type: str = None, is_valid: bool = None) -> int:
         """获取密钥数量."""
         conn = self.get_connection()
@@ -478,7 +508,10 @@ class Database:
         """保存扫描报告."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
+        # 使用报告中的 status，默认为 completed（因为报告是在扫描完成后创建的）
+        status = report.get("status", "completed")
+
         cursor.execute("""
             INSERT INTO scan_stats (scan_mode, total_files, total_keys, valid_keys, started_at, ended_at, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -489,13 +522,13 @@ class Database:
             report.get("valid_keys", 0),
             report.get("start_time"),
             report.get("end_time"),
-            "running"
+            status
         ))
-        
+
         report_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         return report_id
     
     def update_scan_report(self, report_id: int, data: Dict):

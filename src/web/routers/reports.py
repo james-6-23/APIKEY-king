@@ -39,6 +39,27 @@ async def get_report(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{report_id}/keys")
+async def get_report_keys(
+    report_id: int,
+    payload: dict = Depends(verify_token_dependency)
+):
+    """获取报告关联的密钥列表."""
+    try:
+        report = report_service.get_report(report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+
+        keys = report_service.get_report_keys(report_id)
+        return {
+            "status": "ok",
+            "keys": keys,
+            "total": len(keys)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/{report_id}")
 async def delete_report(
     report_id: int,

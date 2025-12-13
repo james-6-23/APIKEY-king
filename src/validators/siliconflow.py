@@ -84,12 +84,24 @@ class SiliconFlowValidator(BaseValidator):
             
             if response.status_code == 200:
                 response_data = response.json()
-                return self._create_success_result({
+
+                # 获取账户余额信息
+                balance_info = self._get_balance(key, proxies)
+
+                metadata = {
                     'test_response': 'success',
                     'model_used': test_model,
                     'usage': response_data.get('usage', {}),
                     'response_time': response.elapsed.total_seconds()
-                })
+                }
+
+                # 如果获取到余额信息，添加到 metadata
+                if balance_info:
+                    metadata['balance'] = balance_info.get('balance')
+                    metadata['charge_balance'] = balance_info.get('charge_balance')
+                    metadata['total_balance'] = balance_info.get('total_balance')
+
+                return self._create_success_result(metadata)
             
             elif response.status_code == 401:
                 return self._create_error_result("unauthorized", "Invalid API key")
@@ -129,3 +141,42 @@ class SiliconFlowValidator(BaseValidator):
     def can_validate(self, key: str) -> bool:
         """Check if this validator can handle the given key."""
         return key.startswith('sk-') and len(key) >= 30
+
+    def _get_balance(self, key: str, proxies: Dict = None) -> Dict[str, Any]:
+        """
+        获取 SiliconFlow 账户余额信息。
+
+        Args:
+            key: API key
+            proxies: 代理配置
+
+        Returns:
+            包含余额信息的字典，失败返回 None
+        """
+        try:
+            url = f"{self.base_url}/user/info"
+            headers = {
+                "Authorization": f"Bearer {key}"
+            }
+
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=self.config.timeout,
+                proxies=proxies
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('status') and data.get('data'):
+                    user_data = data['data']
+                    return {
+                        'balance': user_data.get('balance'),
+                        'charge_balance': user_data.get('chargeBalance'),
+                        'total_balance': user_data.get('totalBalance')
+                    }
+
+        except Exception as e:
+            logger.warning(f"Failed to get SiliconFlow balance: {e}")
+
+        return None

@@ -49,3 +49,4 @@ THREAD_SAFE_LOGGING.md
 CHANGELOG.md
 DEPLOYMENT_GUIDE.md
 NEW_FEATURES.md
+.claude/settings.local.json

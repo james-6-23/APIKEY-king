@@ -7,7 +7,9 @@
     <meta name="description" content="APIKEY-king - API Key Discovery Tool">
     <title>APIKEY-king - 可视化控制台</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -35,21 +37,31 @@
             --ink-900: #050816;
             --ink-700: #0b132b;
             --ink-500: #192742;
-            --glass-light: rgba(255, 255, 255, 0.82);
-            --glass-dark: rgba(15, 23, 42, 0.65);
+            --glass-light: rgba(255, 255, 255, 0.7);
+            --glass-dark: rgba(15, 23, 42, 0.6);
+            --glass-border-light: rgba(255, 255, 255, 0.5);
+            --glass-border-dark: rgba(148, 163, 184, 0.1);
             --accent-1: #56ccf2;
             --accent-2: #7c3aed;
             --accent-3: #22d3ee;
+            --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
         }
 
         body {
             font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: radial-gradient(circle at 20% 20%, rgba(87, 101, 242, 0.12), transparent 25%),
-                        radial-gradient(circle at 80% 0%, rgba(34, 211, 238, 0.16), transparent 22%),
-                        radial-gradient(circle at 50% 90%, rgba(124, 58, 237, 0.22), transparent 25%),
-                        #0b1224;
+            background: radial-gradient(circle at 10% 20%, rgba(87, 101, 242, 0.08), transparent 40%),
+                radial-gradient(circle at 90% 10%, rgba(34, 211, 238, 0.1), transparent 40%),
+                radial-gradient(circle at 50% 90%, rgba(124, 58, 237, 0.15), transparent 45%),
+                #f8fafc;
             position: relative;
             overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .dark body {
+            background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.15), transparent 30%),
+                radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.15), transparent 30%),
+                #020617;
         }
 
         .bg-grid {
@@ -57,153 +69,257 @@
             inset: 0;
             pointer-events: none;
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-            background-size: 70px 70px;
-            opacity: 0.5;
+                linear-gradient(rgba(100, 116, 139, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100, 116, 139, 0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.6;
             z-index: 0;
+            mask-image: linear-gradient(to bottom, transparent, black, transparent);
+        }
+
+        .dark .bg-grid {
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
         }
 
         .bg-ambient {
             position: fixed;
             inset: 0;
             pointer-events: none;
-            filter: blur(70px);
-            background: radial-gradient(circle at 15% 40%, rgba(124, 58, 237, 0.23), transparent 35%),
-                        radial-gradient(circle at 80% 30%, rgba(34, 211, 238, 0.28), transparent 32%),
-                        radial-gradient(circle at 60% 80%, rgba(59, 130, 246, 0.25), transparent 30%);
+            filter: blur(80px);
+            background: radial-gradient(circle at 15% 40%, rgba(124, 58, 237, 0.15), transparent 40%),
+                radial-gradient(circle at 80% 30%, rgba(34, 211, 238, 0.18), transparent 40%),
+                radial-gradient(circle at 40% 70%, rgba(59, 130, 246, 0.15), transparent 40%);
             z-index: 0;
+            opacity: 0.8;
         }
 
         @keyframes pulseBorder {
-            0% { box-shadow: 0 0 0 0 rgba(86, 204, 242, 0.35); }
-            100% { box-shadow: 0 0 0 18px rgba(86, 204, 242, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(86, 204, 242, 0.4);
+                border-color: rgba(86, 204, 242, 0.8);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(86, 204, 242, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(86, 204, 242, 0);
+                border-color: rgba(69, 185, 222, 0.5);
+            }
         }
 
         .glass-card {
             background: var(--glass-light);
-            border: 1px solid rgba(255, 255, 255, 0.45);
-            box-shadow: 0 20px 80px rgba(35, 58, 107, 0.25);
-            backdrop-filter: saturate(140%) blur(16px);
+            border: 1px solid var(--glass-border-light);
+            box-shadow: var(--shadow-premium);
+            backdrop-filter: saturate(180%) blur(20px);
             position: relative;
             z-index: 1;
-        }
-
-        .card-hover {
-            transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .card-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 24px 80px rgba(37, 99, 235, 0.25);
-            border-color: rgba(86, 204, 242, 0.6);
+            transform: translateY(-4px) scale(1.005);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            border-color: rgba(99, 102, 241, 0.4);
         }
 
         .dark .glass-card {
             background: var(--glass-dark);
-            border-color: rgba(148, 163, 184, 0.3);
-            box-shadow: 0 16px 60px rgba(0, 0, 0, 0.45);
+            border-color: var(--glass-border-dark);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            backdrop-filter: saturate(180%) blur(20px);
         }
 
-        .dark body {
-            background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.18), transparent 25%),
-                        radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.18), transparent 22%),
-                        #050816;
+        .dark .card-hover:hover {
+            border-color: rgba(124, 58, 237, 0.5);
+            box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.6);
         }
 
         .neon-text {
-            background: linear-gradient(120deg, var(--accent-3), var(--accent-1), var(--accent-2));
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #2dd4bf 100%);
             -webkit-background-clip: text;
-            color: transparent;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.3));
         }
 
-        .accent-pill {
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            background: linear-gradient(90deg, rgba(34, 211, 238, 0.08), rgba(124, 58, 237, 0.18));
-            backdrop-filter: blur(12px);
+        .dark .neon-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #5eead4 100%);
+            -webkit-background-clip: text;
+            filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.4));
         }
 
         .glow-button {
             position: relative;
             overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .glow-button::after {
             content: '';
             position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.25), transparent 40%);
-            opacity: 0;
-            transition: opacity 0.2s ease;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: skewX(-20deg);
+            transition: 0.5s;
         }
 
         .glow-button:hover::after {
-            opacity: 1;
+            left: 150%;
+            transition: 0.7s ease-in-out;
         }
 
-        .spinner {
-            border: 2px solid #f3f4f6;
-            border-top: 2px solid #3b82f6;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
+        .glow-button:active {
+            transform: scale(0.97);
+        }
+
+        /* Loading Spinner */
+        .spinner-line {
+            animation: spin 1s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 50;
-            animation: slideInRight 0.3s ease-out;
+        /* Animations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
-        .log-item {
-            animation: fadeIn 0.3s ease-out;
+        .animate-in {
+            animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .animate-scale {
+            animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        .hidden { display: none; }
+        /* Custom Scrollbar for Logs */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
 
-        /* Performance optimizations */
-        .will-change-scroll { will-change: scroll-position; }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+        }
 
-        /* 使用 GPU 加速 */
-        .log-item,
-        .spinner { transform: translateZ(0); }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.8);
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.5);
+        }
+
+        /* Refresh Button Animation */
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* UI Element Polishing */
+        input:focus,
+        select:focus,
+        textarea:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+
+        .dark input:focus,
+        .dark select:focus,
+        .dark textarea:focus {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+            border-color: #60a5fa;
+        }
 
         /* Dark Mode overrides */
-        .dark { background-color: hsl(222.2 84% 4.9%); color: hsl(210 40% 98%); }
-        .dark .bg-white { background-color: hsl(222.2 47.4% 11.2%); }
-        .dark .bg-slate-50 { background-color: hsl(222.2 84% 4.9%); }
-        .dark .border-slate-200 { border-color: hsl(217.2 32.6% 17.5%); }
-        .dark .text-slate-900 { color: hsl(210 40% 98%); }
-        .dark .text-slate-600 { color: hsl(215 20.2% 65.1%); }
-        .dark .text-slate-700 { color: hsl(215 16.3% 46.9%); }
-        .dark .text-slate-500 { color: hsl(215.4 16.3% 46.9%); }
+        .dark {
+            background-color: #020617;
+            color: #f1f5f9;
+        }
+
+        .dark .bg-white {
+            background-color: #0f172a;
+        }
+
+        .dark .bg-slate-50 {
+            background-color: #020617;
+        }
+
+        .dark .border-slate-200 {
+            border-color: #1e293b;
+        }
+
+        .dark .text-slate-900 {
+            color: #f8fafc;
+        }
+
+        .dark .text-slate-700 {
+            color: #e2e8f0;
+        }
+
+        .dark .text-slate-600 {
+            color: #94a3b8;
+        }
+
+        .dark .text-slate-500 {
+            color: #64748b;
+        }
+
         .dark input,
         .dark textarea,
         .dark select {
-            background-color: hsl(222.2 47.4% 11.2%);
-            border-color: hsl(217.2 32.6% 17.5%);
-            color: hsl(210 40% 98%);
+            background-color: #0f172a;
+            border-color: #1e293b;
+            color: #f1f5f9;
         }
-        .dark .bg-slate-100 { background-color: hsl(217.2 32.6% 17.5%); }
-        .dark .bg-slate-200 { background-color: hsl(215 27.9% 16.9%); }
+
+        .dark .bg-slate-50 {
+            background-color: #0f172a;
+        }
     </style>
 </head>
 
@@ -214,13 +330,16 @@
     <div id="loginPage" class="min-h-screen flex items-center justify-center px-4 relative z-10">
         <div class="glass-card card-hover rounded-xl border border-slate-200/60 shadow-2xl p-8 w-full max-w-md">
             <div class="text-center mb-6 relative">
-                <div class="absolute inset-x-10 -top-4 h-1 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 blur-sm opacity-70"></div>
-                <svg class="w-16 h-16 text-primary mx-auto mb-4 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div
+                    class="absolute inset-x-10 -top-4 h-1 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 blur-sm opacity-70">
+                </div>
+                <svg class="w-16 h-16 text-primary mx-auto mb-4 drop-shadow" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
                     </path>
                 </svg>
-            <h1 class="text-3xl font-bold text-slate-900 neon-text tracking-tight drop-shadow">APIKEY-king</h1>
+                <h1 class="text-3xl font-bold text-slate-900 neon-text tracking-tight drop-shadow">APIKEY-king</h1>
                 <p class="text-slate-600 mt-2">API Key Discovery Tool</p>
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
@@ -241,11 +360,13 @@
     <!-- Main Dashboard -->
     <div id="dashboardPage" class="hidden relative z-10">
         <!-- Header -->
-        <div class="bg-white/85 dark:bg-slate-900/75 backdrop-blur-lg border-b border-white/60 dark:border-slate-700/60 shadow-lg">
+        <div
+            class="bg-white/85 dark:bg-slate-900/75 backdrop-blur-lg border-b border-white/60 dark:border-slate-700/60 shadow-lg">
             <div class="container mx-auto px-4 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400/90 via-blue-500/90 to-purple-500/90 flex items-center justify-center text-white shadow-lg ring-1 ring-white/40 animate-[pulseBorder_3s_infinite]">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400/90 via-blue-500/90 to-purple-500/90 flex items-center justify-center text-white shadow-lg ring-1 ring-white/40 animate-[pulseBorder_3s_infinite]">
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
@@ -278,7 +399,8 @@
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
-                        <button onclick="toggleDarkMode()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
+                        <button onclick="toggleDarkMode()"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
                             title="切换主题">
                             <svg id="darkModeIcon" class="w-5 h-5" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -297,14 +419,16 @@
                             </svg>
                         </button>
                         <button onclick="window.open('/api/docs', '_blank')"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition" title="API文档">
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
+                            title="API文档">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                                 </path>
                             </svg>
                         </button>
-                        <button onclick="handleLogout()" class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
+                        <button onclick="handleLogout()"
+                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
                             title="退出登录">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -319,7 +443,8 @@
 
         <div class="container mx-auto px-4 py-8 max-w-7xl">
             <!-- Stats Cards with Charts -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="statsCards">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in" style="animation-delay: 0.1s;"
+                id="statsCards">
                 <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
                     <div class="flex items-center justify-between">
                         <div>
@@ -551,18 +676,26 @@
             </div>
 
             <!-- Control Panel -->
-            <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg mb-6">
+            <!-- Control Panel -->
+            <div class="glass-card card-hover rounded-xl border border-white/50 shadow-lg mb-8 animate-in"
+                style="animation-delay: 0.2s;">
                 <div class="p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold text-slate-900">扫描控制</h2>
-                        <div id="currentScanMode" class="hidden px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                            <span class="text-sm text-blue-900 font-medium">当前渠道: </span>
-                            <span id="scanModeText" class="text-sm text-blue-700 font-bold">-</span>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full"></span>
+                                扫描控制
+                            </h2>
+                        </div>
+                        <div id="currentScanMode"
+                            class="hidden px-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg backdrop-blur-sm">
+                            <span class="text-sm text-blue-900 dark:text-blue-300 font-medium">当前渠道: </span>
+                            <span id="scanModeText" class="text-sm text-blue-700 dark:text-blue-400 font-bold">-</span>
                         </div>
                     </div>
-                    <div class="flex gap-3 mb-4">
+                    <div class="flex flex-wrap gap-4 mb-6">
                         <button id="btnStart" onclick="handleStartScan()"
-                            class="px-6 py-2.5 bg-success text-white rounded-md font-semibold hover:bg-success/90 focus:outline-none focus:ring-2 focus:ring-success flex items-center gap-2 shadow-lg glow-button">
+                            class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-emerald-400 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex items-center gap-2 shadow-lg shadow-emerald-500/20 glow-button transition-all duration-300 hover:-translate-y-0.5">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
@@ -573,7 +706,7 @@
                             开始扫描
                         </button>
                         <button id="btnPause" onclick="handlePauseScan()"
-                            class="px-6 py-2.5 bg-amber-500 text-white rounded-md font-semibold hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg glow-button"
+                            class="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg shadow-amber-500/20 glow-button transition-all duration-300"
                             disabled>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -582,7 +715,7 @@
                             暂停
                         </button>
                         <button id="btnResume" onclick="handleResumeScan()"
-                            class="hidden px-6 py-2.5 bg-blue-500 text-white rounded-md font-semibold hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 shadow-lg glow-button"
+                            class="hidden px-8 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 shadow-lg glow-button transition-all duration-300"
                             disabled>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -594,7 +727,7 @@
                             继续
                         </button>
                         <button id="btnStop" onclick="handleStopScan()"
-                            class="px-6 py-2.5 bg-destructive text-white rounded-md font-semibold hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg glow-button"
+                            class="px-8 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg shadow-red-500/20 glow-button transition-all duration-300"
                             disabled>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -604,26 +737,38 @@
                             </svg>
                             停止扫描
                         </button>
-                        <div id="scanStatus" class="flex items-center gap-2 ml-4">
-                            <div class="w-3 h-3 bg-slate-400 rounded-full"></div>
-                            <span class="text-sm text-slate-600">未运行</span>
+                        <div id="scanStatus"
+                            class="flex items-center gap-3 ml-auto bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700">
+                            <span class="relative flex h-3 w-3">
+                                <span
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-slate-500"></span>
+                            </span>
+                            <span class="text-sm font-medium text-slate-600 dark:text-slate-400">未运行</span>
                         </div>
                     </div>
 
                     <!-- Progress Bar -->
-                    <div id="progressContainer" class="hidden">
-                        <div class="mb-2 flex justify-between items-center">
-                            <span class="text-sm text-slate-600">扫描进度</span>
-                            <span id="progressText" class="text-sm font-medium text-slate-700">0%</span>
+                    <div id="progressContainer" class="hidden animate-scale">
+                        <div class="mb-3 flex justify-between items-end">
+                            <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">扫描进度</span>
+                            <span id="progressText"
+                                class="text-lg font-bold text-slate-700 dark:text-slate-200">0%</span>
                         </div>
-                        <div class="w-full h-3 bg-slate-200/80 rounded-full overflow-hidden mb-2">
+                        <div
+                            class="w-full h-4 bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden mb-3 border border-slate-200 dark:border-slate-700">
                             <div id="progressBar"
-                                class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                                style="width: 0%"></div>
+                                class="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 transition-all duration-500 relative overflow-hidden"
+                                style="width: 0%">
+                                <div
+                                    class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite] transform -skew-x-12">
+                                </div>
+                            </div>
                         </div>
-                        <div class="text-xs text-slate-500">
-                            <span>当前查询: </span>
-                            <span id="currentQuery" class="font-mono">-</span>
+                        <div
+                            class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                            <span class="font-semibold text-slate-400">正在搜索:</span>
+                            <span id="currentQuery" class="font-mono text-blue-600 dark:text-blue-400 truncate">-</span>
                         </div>
                     </div>
                 </div>
@@ -644,35 +789,57 @@
             </div>
 
             <!-- Keys Panel -->
-            <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg">
+            <div class="glass-card card-hover rounded-xl border border-white/50 shadow-lg animate-in"
+                style="animation-delay: 0.3s;">
                 <div class="p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold text-slate-900">发现的密钥</h2>
-                        <div class="flex gap-2">
-                            <button onclick="exportKeys()"
-                                class="px-4 py-2 text-sm bg-primary text-white rounded hover:bg-primary/90 flex items-center gap-1 shadow-md glow-button">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
+                                发现的密钥
+                            </h2>
+                            <span
+                                class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2.5 py-0.5 rounded-full font-medium border border-blue-200 dark:border-blue-800"
+                                id="keyCountBadge">0</span>
+                        </div>
+                        <div class="flex gap-3">
+                            <div
+                                class="flex rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+                                <button onclick="exportKeys()"
+                                    class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border-r border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-colors">
+                                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    CSV
+                                </button>
+                                <button onclick="exportKeysTxt()"
+                                    class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    TXT
+                                </button>
+                            </div>
+
+                            <button onclick="handleRefreshKeys(this)" id="btnRefresh"
+                                class="px-4 py-2 text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 flex items-center gap-2 shadow-sm group">
+                                <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
                                     </path>
                                 </svg>
-                                导出 CSV
-                            </button>
-                            <button onclick="exportKeysTxt()"
-                                class="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1 shadow-md glow-button">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                    </path>
-                                </svg>
-                                导出 TXT
-                            </button>
-                            <button onclick="refreshKeys()"
-                                class="px-4 py-2 text-sm bg-slate-200 text-slate-700 rounded hover:bg-slate-300">
                                 刷新
                             </button>
+
                             <button onclick="clearMemory()"
-                                class="px-4 py-2 text-sm bg-amber-500 text-white rounded hover:bg-amber-600 flex items-center gap-1">
+                                class="px-4 py-2 text-sm bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-500 border border-amber-200 dark:border-amber-900/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-2 transition-colors shadow-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -683,15 +850,22 @@
                         </div>
                     </div>
                     <!-- Search and Filter -->
-                    <div class="mb-4 flex gap-3">
-                        <div class="flex-1">
-                            <input type="text" id="keySearch" placeholder="🔍 搜索密钥或来源仓库..."
-                                class="w-full px-4 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    <div class="mb-6 flex gap-4">
+                        <div class="flex-1 relative group">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                            <input type="text" id="keySearch" placeholder="搜索密钥或来源仓库..."
+                                class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 transition-shadow shadow-sm"
                                 oninput="handleKeySearch()" />
                         </div>
-                        <div>
+                        <div class="w-48">
                             <select id="keyTypeFilter" onchange="handleKeySearch()"
-                                class="px-4 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 transition-shadow shadow-sm cursor-pointer appearance-none">
                                 <option value="">全部类型</option>
                                 <option value="gemini">Gemini</option>
                                 <option value="openrouter">OpenRouter</option>
@@ -701,38 +875,117 @@
                         </div>
                     </div>
 
-                    <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
-                        <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <div class="text-sm text-blue-900">
-                            <p class="font-semibold">扫描记忆功能</p>
-                            <p class="text-blue-800">系统会记住已扫描的文件和查询，避免重复扫描。已处理 <span id="memoryStats"
-                                    class="font-bold">加载中...</span></p>
+                    <!-- 批量操作工具栏 -->
+                    <div id="batchOperationsBar"
+                        class="mb-6 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl flex flex-wrap gap-1">
+                        <span
+                            class="px-3 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider self-center ml-1">批量复制:</span>
+                        <button onclick="copyKeysByType('all')"
+                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
+                            <div
+                                class="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover:scale-125 transition-transform">
+                            </div>
+                            全部
+                        </button>
+                        <button onclick="copyKeysByType('gemini')"
+                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
+                            <div
+                                class="w-1.5 h-1.5 rounded-full bg-blue-500 group-hover:scale-125 transition-transform">
+                            </div>
+                            Gemini
+                        </button>
+                        <button onclick="copyKeysByType('openrouter')"
+                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
+                            <div
+                                class="w-1.5 h-1.5 rounded-full bg-purple-500 group-hover:scale-125 transition-transform">
+                            </div>
+                            OpenRouter
+                        </button>
+                        <button onclick="copyKeysByType('modelscope')"
+                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
+                            <div
+                                class="w-1.5 h-1.5 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform">
+                            </div>
+                            ModelScope
+                        </button>
+                        <button onclick="copyKeysByType('siliconflow')"
+                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
+                            <div
+                                class="w-1.5 h-1.5 rounded-full bg-amber-500 group-hover:scale-125 transition-transform">
+                            </div>
+                            SiliconFlow
+                        </button>
+                        <div class="mx-1 w-px bg-slate-300 dark:bg-slate-700 h-5 self-center"></div>
+                        <button onclick="copySelectedKeys()"
+                            class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 ml-auto">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            复制选中 (<span id="selectedCount">0</span>)
+                        </button>
+                    </div>
+
+                    <div
+                        class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-800/30 rounded-xl flex items-start gap-3">
+                        <div class="p-2 bg-blue-100 dark:bg-blue-800/30 rounded-lg">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-sm text-blue-900 dark:text-blue-200 pt-0.5">
+                            <p class="font-semibold mb-0.5">扫描记忆功能</p>
+                            <p class="text-blue-800/80 dark:text-blue-300/80 leading-relaxed">
+                                系统会自动记录已扫描的文件和查询哈希，智能避免重复扫描。已处理 <span id="memoryStats"
+                                    class="font-mono font-bold">加载中...</span></p>
                         </div>
                     </div>
-                    <div id="keysContainer" class="overflow-x-auto">
+                    <div id="keysContainer"
+                        class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <table class="w-full text-sm">
-                            <thead class="bg-slate-50 border-b-2 border-slate-300">
+                            <thead
+                                class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                                 <tr>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">类型</th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">密钥</th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">来源</th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-800">发现时间</th>
-                                    <th class="px-3 py-3 text-center font-semibold text-slate-800">操作</th>
+                                    <th class="px-4 py-3 text-center w-12">
+                                        <input type="checkbox" id="selectAllKeys" onchange="toggleSelectAll(this)"
+                                            class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" />
+                                    </th>
+                                    <th class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">类型
+                                    </th>
+                                    <th class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">密钥
+                                    </th>
+                                    <th class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">余额
+                                    </th>
+                                    <th class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">来源
+                                    </th>
+                                    <th class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                                        发现时间</th>
+                                    <th class="px-4 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">
+                                        操作</th>
                                 </tr>
                             </thead>
-                            <tbody id="keysTableBody" class="divide-y divide-slate-100">
+                            <tbody id="keysTableBody"
+                                class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900/50">
                                 <tr>
-                                    <td colspan="5" class="px-3 py-8 text-center text-slate-500">暂无数据</td>
+                                    <td colspan="7" class="px-4 py-12 text-center text-slate-500">
+                                        <div class="flex flex-col items-center justify-center gap-3">
+                                            <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                            </svg>
+                                            <p>暂无发现密钥，请开始扫描</p>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <!-- Pagination -->
-                    <div id="paginationContainer" class="hidden mt-4 pt-4 border-t border-slate-200">
+                    <div id="paginationContainer"
+                        class="hidden mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                     </div>
                 </div>
             </div>
@@ -837,6 +1090,38 @@
 
     <script src="app-optimized.js"></script>
     <script src="app.js"></script>
+    <script>
+        // Animation handler for Refresh button
+        async function handleRefreshKeys(btn) {
+            const icon = btn.querySelector('svg');
+            if (icon) icon.classList.add('refresh-spin');
+
+            try {
+                if (typeof refreshKeys === 'function') {
+                    // Try to await if it returns a promise
+                    await refreshKeys();
+
+                    // Add a minimum delay to ensure animation is visible
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            } catch (e) {
+                console.error("Refresh failed:", e);
+            } finally {
+                if (icon) icon.classList.remove('refresh-spin');
+                // Colors update
+                if (typeof updateKeyCountBadge === 'function') updateKeyCountBadge();
+            }
+        }
+
+        // Helper to update badge
+        function updateKeyCountBadge() {
+            const count = document.querySelectorAll('#keysTableBody tr').length;
+            const badge = document.getElementById('keyCountBadge');
+            if (badge && count > 0 && !document.querySelector('#keysTableBody td[colspan]')) {
+                badge.textContent = count;
+            }
+        }
+    </script>
 </body>
 
 </html>

@@ -733,9 +733,14 @@ async function refreshKeys() {
 
 function displayKeys(keys) {
     const tbody = document.getElementById('keysTableBody');
-    
+
+    // 重置全选复选框
+    const selectAllCheckbox = document.getElementById('selectAllKeys');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+    updateSelectedCount();
+
     if (keys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">暂无数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-slate-500">暂无数据</td></tr>';
         updatePagination(0, 0);
         return;
     }
@@ -745,21 +750,31 @@ function displayKeys(keys) {
     const startIdx = (currentPage - 1) * keysPerPage;
     const endIdx = startIdx + keysPerPage;
     const pageKeys = keys.slice(startIdx, endIdx);
-    
+
     // 使用 DocumentFragment 提升性能
     const fragment = document.createDocumentFragment();
-    
+
     pageKeys.forEach((key, index) => {
         const tr = document.createElement('tr');
         tr.className = index % 2 === 0 ? 'bg-white hover:bg-slate-100' : 'bg-slate-50/50 hover:bg-slate-100';
-        
+
+        // 余额显示逻辑：只有当有余额时才显示，否则显示 "-"
+        const balanceDisplay = key.balance
+            ? `<span class="text-green-600 font-medium">¥${escapeHtml(key.balance)}</span>`
+            : '<span class="text-slate-400">-</span>';
+
         tr.innerHTML = `
+            <td class="px-3 py-2 text-center">
+                <input type="checkbox" class="key-checkbox w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                    data-key="${escapeAttribute(key.key)}" data-type="${escapeAttribute(key.type)}" onchange="updateSelectedCount()" />
+            </td>
             <td class="px-3 py-2">
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded ${getKeyTypeBadge(key.type)}">
                     ${key.type.toUpperCase()}
                 </span>
             </td>
             <td class="px-3 py-2 font-mono text-xs">${escapeHtml(key.key.substring(0, 20))}...</td>
+            <td class="px-3 py-2 text-xs">${balanceDisplay}</td>
             <td class="px-3 py-2 text-xs">
                 <a href="${escapeHtml(key.url)}" target="_blank" class="text-blue-600 hover:underline">
                     ${escapeHtml(key.source)}
@@ -772,13 +787,13 @@ function displayKeys(keys) {
                 </button>
             </td>
         `;
-        
+
         fragment.appendChild(tr);
     });
-    
+
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
-    
+
     // 更新分页控件
     updatePagination(keys.length, totalPages);
 }
@@ -831,6 +846,98 @@ function goToPage(page) {
     currentPage = page;
     handleKeySearch();
 }
+
+// ===== 批量操作功能 =====
+
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.key-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selectedCount = document.querySelectorAll('.key-checkbox:checked').length;
+    const countElement = document.getElementById('selectedCount');
+    if (countElement) {
+        countElement.textContent = selectedCount;
+    }
+}
+
+function getSelectedKeys() {
+    const checkboxes = document.querySelectorAll('.key-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.dataset.key);
+}
+
+async function copySelectedKeys() {
+    const keys = getSelectedKeys();
+    if (keys.length === 0) {
+        showToast('请先选择要复制的密钥', 'warning');
+        return;
+    }
+
+    await copyKeysToClipboard(keys, `已复制 ${keys.length} 个选中的密钥`);
+}
+
+async function copyKeysByType(type) {
+    if (!allKeysCache || allKeysCache.length === 0) {
+        showToast('暂无密钥数据', 'warning');
+        return;
+    }
+
+    let keys;
+    let message;
+
+    if (type === 'all') {
+        keys = allKeysCache.map(k => k.key);
+        message = `已复制全部 ${keys.length} 个密钥`;
+    } else {
+        keys = allKeysCache.filter(k => k.type === type).map(k => k.key);
+        if (keys.length === 0) {
+            const typeNames = {
+                'gemini': 'Gemini',
+                'openrouter': 'OpenRouter',
+                'modelscope': 'ModelScope',
+                'siliconflow': 'SiliconFlow'
+            };
+            showToast(`暂无 ${typeNames[type] || type} 类型的密钥`, 'warning');
+            return;
+        }
+        message = `已复制 ${keys.length} 个 ${type.toUpperCase()} 密钥`;
+    }
+
+    await copyKeysToClipboard(keys, message);
+}
+
+async function copyKeysToClipboard(keys, successMessage) {
+    const keysText = keys.join('\n');
+
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(keysText);
+            showToast(successMessage, 'success');
+        } else {
+            // 降级方案
+            const textarea = document.createElement('textarea');
+            textarea.value = keysText;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMessage, 'success');
+            } catch (err) {
+                showToast('复制失败，请手动复制', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+    } catch (error) {
+        console.error('Copy failed:', error);
+        showToast('复制失败', 'error');
+    }
+}
+
+// ===== 密钥类型徽章 =====
 
 function getKeyTypeBadge(type) {
     const badges = {
@@ -1258,7 +1365,7 @@ function displayReports(reports) {
 function createReportCard(report) {
     const card = document.createElement('div');
     card.className = 'bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow';
-    
+
     const modeNames = {
         'compatible': '全部平台',
         'gemini-only': 'Gemini',
@@ -1266,7 +1373,7 @@ function createReportCard(report) {
         'modelscope-only': 'ModelScope',
         'siliconflow-only': 'SiliconFlow'
     };
-    
+
     const modeName = modeNames[report.scan_mode] || report.scan_mode;
     const modeColors = {
         'compatible': 'bg-slate-100 text-slate-800',
@@ -1276,15 +1383,28 @@ function createReportCard(report) {
         'siliconflow-only': 'bg-amber-100 text-amber-800'
     };
     const modeColor = modeColors[report.scan_mode] || 'bg-slate-100 text-slate-800';
-    
+
     const startTime = new Date(report.started_at).toLocaleString('zh-CN');
     const endTime = report.ended_at ? new Date(report.ended_at).toLocaleString('zh-CN') : '进行中';
-    
+
     // 计算成功率
-    const successRate = report.total_keys > 0 
-        ? ((report.valid_keys / report.total_keys) * 100).toFixed(1) 
+    const successRate = report.total_keys > 0
+        ? ((report.valid_keys / report.total_keys) * 100).toFixed(1)
         : 0;
-    
+
+    // 只有当有有效密钥时才显示复制按钮
+    const copyButtonHtml = report.valid_keys > 0 ? `
+        <div class="pt-3 border-t border-slate-100 mt-3">
+            <button onclick="copyReportKeys(${report.id})"
+                class="w-full py-2 px-3 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                </svg>
+                一键复制密钥
+            </button>
+        </div>
+    ` : '';
+
     card.innerHTML = `
         <div class="flex items-start justify-between mb-3">
             <div class="flex-1">
@@ -1304,7 +1424,7 @@ function createReportCard(report) {
                 </svg>
             </button>
         </div>
-        
+
         <div class="grid grid-cols-3 gap-3 mb-3">
             <div class="text-center">
                 <div class="text-2xl font-bold text-blue-600">${report.total_files || 0}</div>
@@ -1319,7 +1439,7 @@ function createReportCard(report) {
                 <div class="text-xs text-slate-600">有效密钥</div>
             </div>
         </div>
-        
+
         <div class="pt-3 border-t border-slate-100">
             <div class="flex justify-between text-xs text-slate-600">
                 <span>成功率</span>
@@ -1329,8 +1449,10 @@ function createReportCard(report) {
                 <div class="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all" style="width: ${successRate}%"></div>
             </div>
         </div>
+
+        ${copyButtonHtml}
     `;
-    
+
     return card;
 }
 
@@ -1338,7 +1460,7 @@ async function deleteReport(reportId) {
     if (!confirm('确定要删除这个报告吗？')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_BASE}/api/reports/${reportId}`, {
             method: 'DELETE',
@@ -1350,6 +1472,50 @@ async function deleteReport(reportId) {
         showToast('报告已删除', 'success');
         loadReports();  // 刷新列表
     } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function copyReportKeys(reportId) {
+    try {
+        const response = await fetch(`${API_BASE}/api/reports/${reportId}/keys`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) throw new Error('获取密钥失败');
+
+        const data = await response.json();
+
+        if (!data.keys || data.keys.length === 0) {
+            showToast('该报告没有有效密钥', 'warning');
+            return;
+        }
+
+        // 将密钥用换行符连接
+        const keysText = data.keys.join('\n');
+
+        // 复制到剪贴板
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(keysText);
+            showToast(`已复制 ${data.keys.length} 个密钥`, 'success');
+        } else {
+            // 降级方案：使用 textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = keysText;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(`已复制 ${data.keys.length} 个密钥`, 'success');
+            } catch (err) {
+                showToast('复制失败，请手动复制', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+    } catch (error) {
+        console.error('Failed to copy report keys:', error);
         showToast(error.message, 'error');
     }
 }

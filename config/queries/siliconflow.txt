@@ -90,3 +90,37 @@
 "/v1/chat/completions" AND "siliconflow" in:file
 "/v1/completions" AND "siliconflow" in:file
 "/v1/embeddings" AND "siliconflow" in:file
+
+# 身份验证头
+"Authorization: Bearer sk-" AND "siliconflow" in:file
+"Bearer" AND "api.siliconflow.cn" in:file
+
+# 热门模型组合搜索
+"deepseek-ai" AND "siliconflow" in:file
+"deepseek-v3" AND "siliconflow" in:file
+"Qwen/Qwen2.5" AND "siliconflow" in:file
+"Qwen2.5" AND "siliconflow" in:file
+"internlm" AND "siliconflow" in:file
+"yi-1.5" AND "siliconflow" in:file
+
+# 备用域名和控制台
+"cloud.siliconflow.cn" in:file
+"https://cloud.siliconflow.cn" in:file
+
+# 常见工具和集成
+"OneAPI" AND "siliconflow" in:file
+"NewAPI" AND "siliconflow" in:file
+"Cherry Studio" AND "siliconflow" in:file
+"NextChat" AND "siliconflow" in:file
+"LobeChat" AND "siliconflow" in:file
+
+# 更多变量名变体
+"SILICON_FLOW_API_KEY" in:file
+"SILICON_API_KEY" in:file
+"SILICONFLOW_KEY" in:file
+"SILICON_KEY" in:file
+"SFLOW_API_KEY" in:file
+
+# Curl 和命令行示例
+"curl" AND "api.siliconflow.cn" in:file
+"curl" AND "siliconflow" AND "header" in:file
