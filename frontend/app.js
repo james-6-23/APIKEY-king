@@ -1077,25 +1077,80 @@ function getFilteredKeys() {
 }
 
 // Utility Functions
-function showToast(message, type = 'success') {
+function showToast(message, type = 'success', duration = 3000) {
     const container = document.getElementById('toastContainer');
+    if (!container) return;
+
     const toast = document.createElement('div');
 
-    const bgColor = type === 'success' ? 'bg-success' : 'bg-destructive';
-    const icon = type === 'success'
-        ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
-        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    // Type-specific configurations
+    const typeConfig = {
+        success: {
+            bg: 'bg-gradient-to-r from-emerald-500 to-green-600',
+            icon: `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>`,
+            progressColor: 'bg-emerald-300'
+        },
+        error: {
+            bg: 'bg-gradient-to-r from-red-500 to-rose-600',
+            icon: `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>`,
+            progressColor: 'bg-red-300'
+        },
+        warning: {
+            bg: 'bg-gradient-to-r from-amber-500 to-orange-500',
+            icon: `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>`,
+            progressColor: 'bg-amber-300'
+        },
+        info: {
+            bg: 'bg-gradient-to-r from-blue-500 to-indigo-600',
+            icon: `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>`,
+            progressColor: 'bg-blue-300'
+        }
+    };
 
-    toast.className = `toast ${bgColor} text-white px-4 py-3 rounded-md shadow-lg flex items-center gap-3`;
-    toast.innerHTML = `${icon}<span class="text-sm font-medium">${escapeHtml(message)}</span>`;
+    const config = typeConfig[type] || typeConfig.success;
+
+    // Toast structure with glassmorphism and progress bar
+    toast.className = `
+        ${config.bg} text-white px-4 py-3 rounded-xl shadow-2xl 
+        flex items-center gap-3 min-w-[280px] max-w-[400px]
+        pointer-events-auto backdrop-blur-sm
+        relative overflow-hidden
+    `;
+
+    // Add animation style
+    toast.style.cssText = `
+        animation: toastSlideIn 0.3s ease-out forwards;
+    `;
+
+    toast.innerHTML = `
+        ${config.icon}
+        <span class="text-sm font-medium flex-1">${escapeHtml(message)}</span>
+        <button onclick="this.parentElement.remove()" class="p-1 hover:bg-white/20 rounded-full transition-colors flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <div class="absolute bottom-0 left-0 right-0 h-1 ${config.progressColor} opacity-50 origin-left" 
+             style="animation: toastProgress ${duration}ms linear forwards"></div>
+    `;
 
     container.appendChild(toast);
 
+    // Auto remove after duration
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100px)';
+        toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, duration);
+
+    return toast;
 }
 
 function escapeHtml(text) {
