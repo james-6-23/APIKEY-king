@@ -764,25 +764,25 @@ function displayKeys(keys) {
             : '<span class="text-slate-400">-</span>';
 
         tr.innerHTML = `
-            <td class="w-[40px] px-3 py-3 text-center">
+            <td class="w-10 min-w-[40px] px-2 py-3 text-center">
                 <input type="checkbox" class="key-checkbox w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
                     data-key="${escapeAttribute(key.key)}" data-type="${escapeAttribute(key.type)}" onchange="updateSelectedCount()" />
             </td>
-            <td class="w-[120px] px-3 py-3 whitespace-nowrap overflow-hidden">
+            <td class="w-[130px] min-w-[130px] px-3 py-3 whitespace-nowrap">
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded ${getKeyTypeBadge(key.type)}">
                     ${key.type.toUpperCase()}
                 </span>
             </td>
-            <td class="w-[180px] px-3 py-3 font-mono text-xs truncate overflow-hidden" title="${escapeAttribute(key.key)}">${escapeHtml(key.key.substring(0, 20))}...</td>
-            <td class="w-[70px] px-3 py-3 text-xs whitespace-nowrap overflow-hidden">${balanceDisplay}</td>
-            <td class="px-3 py-3 text-xs truncate overflow-hidden">
+            <td class="w-[160px] min-w-[160px] px-3 py-3 font-mono text-xs truncate overflow-hidden" title="${escapeAttribute(key.key)}">${escapeHtml(key.key.substring(0, 18))}...</td>
+            <td class="w-16 min-w-[64px] px-2 py-3 text-xs whitespace-nowrap">${balanceDisplay}</td>
+            <td class="min-w-[150px] px-3 py-3 text-xs truncate overflow-hidden">
                 <a href="${escapeHtml(key.url)}" target="_blank" class="text-blue-600 hover:underline block truncate" title="${escapeAttribute(key.source)}">
                     ${escapeHtml(key.source)}
                 </a>
             </td>
-            <td class="w-[180px] px-3 py-3 text-xs text-slate-600 whitespace-nowrap overflow-hidden">${key.found_at}</td>
-            <td class="w-[70px] px-3 py-3 text-center whitespace-nowrap overflow-hidden">
-                <button onclick="copyKey('${escapeAttribute(key.key)}')" class="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 transition-colors">
+            <td class="w-[170px] min-w-[170px] px-3 py-3 text-xs text-slate-600 whitespace-nowrap">${key.found_at}</td>
+            <td class="w-16 min-w-[64px] px-2 py-3 text-center whitespace-nowrap">
+                <button onclick="copyKey('${escapeAttribute(key.key)}')" class="px-2.5 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 transition-colors">
                     复制
                 </button>
             </td>
