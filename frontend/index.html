@@ -703,8 +703,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            开始扫描
-                        </button>
+                            开始扫描                        </button>
                         <button id="btnPause" onclick="handlePauseScan()"
                             class="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg shadow-amber-500/20 glow-button transition-all duration-300"
                             disabled>
@@ -796,8 +795,7 @@
                         <div class="flex items-center gap-3">
                             <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
                                 <span class="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
-                                发现的密钥
-                            </h2>
+                                发现的密钥                            </h2>
                             <span
                                 class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2.5 py-0.5 rounded-full font-medium border border-blue-200 dark:border-blue-800"
                                 id="keyCountBadge">0</span>
@@ -875,7 +873,7 @@
                         </div>
                     </div>
 
-                    <!-- 批量操作工具栏 -->
+                    <!-- 批量操作工具栏-->
                     <div id="batchOperationsBar"
                         class="mb-6 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl flex flex-wrap gap-1">
                         <span
@@ -944,20 +942,29 @@
                     </div>
                     <div id="keysContainer"
                         class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <table class="w-full text-sm">
+                        <table class="w-full text-sm table-fixed">
+                            <colgroup>
+                                <col style="width: 40px" />
+                                <col style="width: 100px" />
+                                <col style="width: 180px" />
+                                <col style="width: 70px" />
+                                <col />
+                                <col style="width: 180px" />
+                                <col style="width: 70px" />
+                            </colgroup>
                             <thead
                                 class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                                 <tr>
-                                    <th class="px-3 py-3 text-center w-10">
+                                    <th class="px-3 py-3 text-center">
                                         <input type="checkbox" id="selectAllKeys" onchange="toggleSelectAll(this)"
                                             class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" />
                                     </th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 w-24">类型</th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 w-48">密钥</th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 w-20">余额</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">类型</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">密钥</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">余额</th>
                                     <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">来源</th>
-                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 w-44">发现时间</th>
-                                    <th class="px-3 py-3 text-center font-semibold text-slate-700 dark:text-slate-300 w-20">操作</th>
+                                    <th class="px-3 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">发现时间</th>
+                                    <th class="px-3 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="keysTableBody"

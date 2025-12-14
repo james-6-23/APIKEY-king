@@ -773,14 +773,14 @@ function displayKeys(keys) {
                     ${key.type.toUpperCase()}
                 </span>
             </td>
-            <td class="px-3 py-3 font-mono text-xs truncate max-w-[180px]" title="${escapeAttribute(key.key)}">${escapeHtml(key.key.substring(0, 20))}...</td>
+            <td class="px-3 py-3 font-mono text-xs truncate overflow-hidden" title="${escapeAttribute(key.key)}">${escapeHtml(key.key.substring(0, 20))}...</td>
             <td class="px-3 py-3 text-xs">${balanceDisplay}</td>
-            <td class="px-3 py-3 text-xs truncate max-w-[200px]">
+            <td class="px-3 py-3 text-xs truncate overflow-hidden">
                 <a href="${escapeHtml(key.url)}" target="_blank" class="text-blue-600 hover:underline" title="${escapeAttribute(key.source)}">
                     ${escapeHtml(key.source)}
                 </a>
             </td>
-            <td class="px-3 py-3 text-xs text-slate-600 whitespace-nowrap">${key.found_at}</td>
+            <td class="px-3 py-3 text-xs text-slate-600 truncate overflow-hidden">${key.found_at}</td>
             <td class="px-3 py-3 text-center">
                 <button onclick="copyKey('${escapeAttribute(key.key)}')" class="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 whitespace-nowrap">
                     复制
