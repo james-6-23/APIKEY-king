@@ -79,11 +79,20 @@ class ReportService:
         start_time = report.get('started_at')
         end_time = report.get('ended_at')
 
+        # 如果没有时间范围，尝试直接获取所有有效密钥
         if not start_time or not end_time:
-            return []
+            # 回退方案：获取所有有效密钥
+            all_keys = db.get_all_keys(is_valid=True)
+            return [key.get('key_value') for key in all_keys if key.get('key_value')]
 
         # 根据时间范围获取密钥
         keys = db.get_keys_by_time_range(start_time, end_time, is_valid=True)
+        
+        # 如果时间范围查询没有结果，但报告显示有有效密钥，回退获取所有有效密钥
+        if not keys and report.get('valid_keys', 0) > 0:
+            all_keys = db.get_all_keys(is_valid=True)
+            return [key.get('key_value') for key in all_keys if key.get('key_value')]
+        
         return [key.get('key_value') for key in keys if key.get('key_value')]
 
     def delete_report(self, report_id: int):

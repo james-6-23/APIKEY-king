@@ -1442,10 +1442,14 @@ function createReportCard(report) {
     const startTime = new Date(report.started_at).toLocaleString('zh-CN');
     const endTime = report.ended_at ? new Date(report.ended_at).toLocaleString('zh-CN') : '进行中';
 
-    // 计算成功率
-    const successRate = report.total_keys > 0
-        ? ((report.valid_keys / report.total_keys) * 100).toFixed(1)
-        : 0;
+    // 修复：如果 total_keys 为 0 但 valid_keys 有值，使用 valid_keys 作为发现密钥数
+    const discoveredKeys = report.total_keys || report.valid_keys || 0;
+    const validKeys = report.valid_keys || 0;
+
+    // 计算成功率：如果发现密钥数大于0，计算有效率
+    const successRate = discoveredKeys > 0
+        ? ((validKeys / discoveredKeys) * 100).toFixed(1)
+        : (validKeys > 0 ? 100 : 0);
 
     // 只有当有有效密钥时才显示复制按钮
     const copyButtonHtml = report.valid_keys > 0 ? `
@@ -1486,11 +1490,11 @@ function createReportCard(report) {
                 <div class="text-xs text-slate-600">扫描文件</div>
             </div>
             <div class="text-center">
-                <div class="text-2xl font-bold text-purple-600">${report.total_keys || 0}</div>
+                <div class="text-2xl font-bold text-purple-600">${discoveredKeys}</div>
                 <div class="text-xs text-slate-600">发现密钥</div>
             </div>
             <div class="text-center">
-                <div class="text-2xl font-bold text-green-600">${report.valid_keys || 0}</div>
+                <div class="text-2xl font-bold text-green-600">${validKeys}</div>
                 <div class="text-xs text-slate-600">有效密钥</div>
             </div>
         </div>
