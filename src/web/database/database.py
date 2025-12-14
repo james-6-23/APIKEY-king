@@ -233,6 +233,8 @@ class Database:
         """保存密钥."""
         conn = self.get_connection()
         cursor = conn.cursor()
+        
+        now = datetime.now().isoformat()
 
         cursor.execute("""
             INSERT INTO api_keys
@@ -247,7 +249,7 @@ class Database:
                 updated_at = excluded.updated_at
         """, (key_value, key_type, source_repo, source_file, source_url,
               is_valid, validation_status, validation_message, balance,
-              datetime.now(), datetime.now()))
+              now, now))
 
         conn.commit()
         conn.close()
@@ -281,9 +283,12 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
 
+        # 使用 datetime 函数确保时间格式正确比较
         query = """
             SELECT * FROM api_keys
-            WHERE created_at >= ? AND created_at <= ? AND is_valid = ?
+            WHERE datetime(created_at) >= datetime(?) 
+              AND datetime(created_at) <= datetime(?) 
+              AND is_valid = ?
             ORDER BY created_at DESC
         """
 
