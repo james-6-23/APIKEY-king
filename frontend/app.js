@@ -11,40 +11,22 @@ let allKeysCache = [];
 document.addEventListener('DOMContentLoaded', () => {
     initDarkMode();
     initLogVirtualList();
+
+    // Check authentication
     if (authToken) {
         verifyAuth();
     } else {
-        showLoginPage();
+        // Redirect to login page
+        redirectToLogin();
     }
 });
 
-// Auth Functions
-async function handleLogin(event) {
-    event.preventDefault();
-    const password = document.getElementById('password').value;
-
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
-        });
-
-        if (!response.ok) {
-            throw new Error('密码错误');
-        }
-
-        const data = await response.json();
-        authToken = data.access_token;
-        localStorage.setItem('auth_token', authToken);
-
-        showToast('登录成功', 'success');
-        showDashboard();
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
+// Redirect to login page
+function redirectToLogin() {
+    window.location.href = '/login.html';
 }
 
+// Auth Functions
 async function verifyAuth() {
     try {
         const response = await fetch(`${API_BASE}/api/auth/verify`, {
@@ -52,14 +34,15 @@ async function verifyAuth() {
         });
 
         if (response.ok) {
-            showDashboard();
+            // Token is valid, initialize dashboard
+            initializeDashboard();
         } else {
             throw new Error('Token expired');
         }
     } catch (error) {
         localStorage.removeItem('auth_token');
         authToken = null;
-        showLoginPage();
+        redirectToLogin();
     }
 }
 
@@ -69,22 +52,17 @@ function handleLogout() {
     wsShouldReconnect = false;
     disconnectWebSocket();
     stopStatusPolling();
-    showLoginPage();
-    showToast('已退出登录', 'success');
+
+    showToast('已退出登录，正在跳转...', 'success');
+
+    // Redirect to login page after a brief delay
+    setTimeout(() => {
+        redirectToLogin();
+    }, 500);
 }
 
-function showLoginPage() {
-    wsShouldReconnect = false;
-    stopStatusPolling();
-    disconnectWebSocket();
-
-    document.getElementById('loginPage').classList.remove('hidden');
-    document.getElementById('dashboardPage').classList.add('hidden');
-}
-
-function showDashboard() {
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('dashboardPage').classList.remove('hidden');
+// Initialize dashboard components
+function initializeDashboard() {
     wsShouldReconnect = true;
     loadConfig();
     loadKeys();
