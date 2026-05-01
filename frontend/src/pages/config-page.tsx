@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProxyManager } from "@/components/config/proxy-manager";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import type { AppConfig, ConfigResponse } from "@/types/api";
@@ -227,12 +228,11 @@ function CredentialsTab({ form }: { form: Form }) {
             {t("config.credentials.githubTokensHint")}
           </p>
         </div>
-        <div className="space-y-2">
-          <Label>{t("config.credentials.proxy")}</Label>
-          <Input placeholder="http://127.0.0.1:7890" {...form.register("proxy")} />
-          <p className="text-xs text-muted-foreground">{t("config.credentials.proxyHint")}</p>
-        </div>
-        <div className="space-y-2">
+        <ProxyManager
+          value={form.watch("proxy") ?? ""}
+          onChange={(next) => form.setValue("proxy", next, { shouldDirty: true })}
+        />
+        <div className="space-y-2 md:col-span-2">
           <Label>{t("config.credentials.dateRange")}</Label>
           <Input type="number" min={1} max={3650} {...form.register("date_range_days")} />
           <p className="text-xs text-muted-foreground">{t("config.credentials.dateRangeHint")}</p>
