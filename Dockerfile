@@ -23,7 +23,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
     uvicorn[standard] \
     pyjwt \
     websockets \
-    google-generativeai>=0.8.5 \
     python-dotenv>=1.1.1 \
     requests>=2.32.4 \
     pyyaml>=6.0
