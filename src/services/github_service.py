@@ -4,6 +4,7 @@ GitHub service for API interactions.
 
 import base64
 import random
+import threading
 import time
 from typing import Dict, List, Optional, Any
 import requests
@@ -21,6 +22,8 @@ class GitHubService:
         self.api_url = config.github.api_url
         self.proxies = config.get_proxy_configs()
         self._token_ptr = 0
+        self._proxy_ptr = 0
+        self._proxy_lock = threading.Lock()
         self.log_callback = log_callback or print  # Use callback or default to print
 
         performance_config = performance_config or {}
@@ -45,15 +48,25 @@ class GitHubService:
         return token.strip()
     
     def _get_random_proxy(self) -> Optional[Dict[str, str]]:
-        """Get random proxy configuration."""
+        """Round-robin through the configured proxy list.
+
+        Kept under the original name so existing call sites don't have to
+        change. With only one proxy configured this simply returns it every
+        time; with N proxies each call advances the pointer.
+        """
         if not self.proxies:
             return None
-        
-        proxy_config = random.choice(self.proxies)
+
+        with self._proxy_lock:
+            proxy_config = self.proxies[self._proxy_ptr % len(self.proxies)]
+            self._proxy_ptr += 1
+
+        if not (proxy_config.http or proxy_config.https):
+            return None
         return {
             'http': proxy_config.http,
-            'https': proxy_config.https
-        } if proxy_config.http or proxy_config.https else None
+            'https': proxy_config.https,
+        }
     
     def search_code(self, query: str, max_retries: Optional[int] = None) -> Dict[str, Any]:
         """

@@ -27,6 +27,10 @@ htmlcov/
 .env
 .env.*
 
+# Proxy lists (contain credentials — never commit)
+proxyscrape_*.txt
+proxies_*.txt
+
 # Data files (Web version uses database only)
 data/*
 !data/.gitkeep

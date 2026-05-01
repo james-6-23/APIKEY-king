@@ -30,7 +30,12 @@ class ScannerRunner:
             # Set environment variables
             os.environ["GITHUB_TOKENS"] = ",".join(self.config["github_tokens"])
             if self.config.get("proxy"):
-                os.environ["PROXY"] = self.config["proxy"]
+                # Proxy UI is a textarea (newline-separated); env-var transport
+                # is safer as comma-separated. Downstream _parse_proxy_list
+                # accepts either.
+                raw_proxy = self.config["proxy"]
+                proxy_list = [p.strip() for p in raw_proxy.replace('\n', ',').split(',') if p.strip()]
+                os.environ["PROXY"] = ",".join(proxy_list)
             os.environ["DATE_RANGE_DAYS"] = str(self.config.get("date_range_days", 730))
 
             # Determine scan mode

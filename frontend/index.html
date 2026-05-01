@@ -126,8 +126,9 @@
                                     <textarea id="githubTokens" rows="3" placeholder="ghp_xxxxxxxxxxxxx" required></textarea>
                                 </div>
                                 <div>
-                                    <label class="field-label">Proxy · optional</label>
-                                    <input type="text" id="proxy" placeholder="http://localhost:1080" />
+                                    <label class="field-label">Proxy · optional · one per line</label>
+                                    <textarea id="proxy" rows="3" placeholder="http://user:pass@host:port&#10;http://user:pass@host2:port&#10;..."></textarea>
+                                    <p class="help-text">Multiple proxies rotate round-robin per request</p>
                                     <label class="field-label" style="margin-top:14px;">Date range · days</label>
                                     <input type="number" id="dateRange" value="730" />
                                 </div>

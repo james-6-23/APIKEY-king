@@ -189,10 +189,12 @@ class ConfigService:
         return [token.strip() for token in tokens_str.split(',') if token.strip()]
     
     def _parse_proxy_list(self, proxy_str: str) -> list:
-        """Parse comma-separated proxy list."""
+        """Parse proxy list split by newline and/or comma."""
         if not proxy_str:
             return []
-        return [proxy.strip() for proxy in proxy_str.split(',') if proxy.strip()]
+        # Accept both "\n" (textarea UI) and "," (env-var form) as separators.
+        parts = proxy_str.replace(',', '\n').splitlines()
+        return [p.strip() for p in parts if p.strip()]
     
     def _parse_blacklist(self, blacklist_str: str) -> list:
         """Parse comma-separated blacklist."""
