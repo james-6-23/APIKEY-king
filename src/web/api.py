@@ -4,6 +4,7 @@ Main application entry point.
 """
 
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -89,8 +90,14 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "APIKEY-king"}
 
-# Static files (frontend) - must be last
-app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
+# Static files (frontend) - must be last.
+# Prefer the Vite build output (``frontend/dist``) and fall back to the legacy
+# ``frontend`` directory only if the build hasn't been produced (e.g. during
+# local Python-only debugging).
+_frontend_root = Path(__file__).resolve().parents[2] / "frontend"
+_frontend_dist = _frontend_root / "dist"
+_frontend_dir = _frontend_dist if _frontend_dist.is_dir() else _frontend_root
+app.mount("/", StaticFiles(directory=str(_frontend_dir), html=True), name="static")
 
 
 if __name__ == "__main__":

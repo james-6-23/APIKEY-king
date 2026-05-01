@@ -36,6 +36,11 @@ data/
 .env
 .env.*
 
+# Frontend build artifacts — stage 1 generates these fresh
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
 # Documentation
 *.md
 !README.md
