@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useScanStatus } from "@/hooks/useScanStatus";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { ScanControlCard } from "@/components/dashboard/scan-control-card";
 import { LiveLogsCard } from "@/components/dashboard/live-logs-card";
@@ -7,6 +8,7 @@ import { LiveLogsCard } from "@/components/dashboard/live-logs-card";
 export function DashboardPage() {
   const { t } = useTranslation();
   const { status } = useScanStatus();
+  const { config } = useAppConfig();
 
   return (
     <div className="space-y-6">
@@ -16,7 +18,7 @@ export function DashboardPage() {
       </div>
 
       <StatsCards stats={status?.stats} />
-      <ScanControlCard status={status} />
+      <ScanControlCard status={status} config={config} />
       <LiveLogsCard />
     </div>
   );

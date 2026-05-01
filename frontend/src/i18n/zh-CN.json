@@ -92,7 +92,9 @@
       "pauseSuccess": "已暂停",
       "resumeSuccess": "已继续",
       "configMissing": "尚未配置 GitHub Token，请先前往配置页",
-      "actionFailed": "操作失败"
+      "actionFailed": "操作失败",
+      "validators": "已启用校验器 · 模型",
+      "noModel": "无需模型"
     },
     "logs": {
       "title": "实时日志",

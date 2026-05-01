@@ -92,7 +92,9 @@
       "pauseSuccess": "Paused",
       "resumeSuccess": "Resumed",
       "configMissing": "GitHub tokens are not configured yet",
-      "actionFailed": "Action failed"
+      "actionFailed": "Action failed",
+      "validators": "Enabled validators · model",
+      "noModel": "No model needed"
     },
     "logs": {
       "title": "Live logs",
