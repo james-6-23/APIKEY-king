@@ -35,6 +35,18 @@ class BaseValidator(KeyValidator):
             error_message=error_message,
             metadata={'validator': self.name}
         )
+
+    def _create_skip_result(self, reason: str) -> ValidationResult:
+        """Create a "skipped" validation result for cases where we deliberately
+        don't hit the upstream (e.g. validator disabled, unsupported key
+        type). Distinct from _create_error_result so downstream code can
+        filter out skips without treating them as failures."""
+        return ValidationResult(
+            is_valid=False,
+            status='skipped',
+            error_message=reason,
+            metadata={'validator': self.name}
+        )
     
     def _create_success_result(self, metadata: Dict[str, Any] = None) -> ValidationResult:
         """Create a successful validation result."""
