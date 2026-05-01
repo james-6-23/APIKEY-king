@@ -88,14 +88,6 @@ async function handleSaveConfig(event) {
 
     // 渠道验证配置
     const validators = {
-        gemini: {
-            enabled: document.getElementById('geminiEnabled' + suffix).checked,
-            model: document.getElementById('geminiModel' + suffix).value.trim()
-        },
-        openrouter: {
-            enabled: document.getElementById('openrouterEnabled' + suffix).checked,
-            model: document.getElementById('openrouterModel' + suffix).value.trim()
-        },
         modelscope: {
             enabled: document.getElementById('modelscopeEnabled' + suffix).checked,
             model: document.getElementById('modelscopeModel' + suffix).value.trim()
@@ -105,6 +97,12 @@ async function handleSaveConfig(event) {
             model: document.getElementById('siliconflowModel' + suffix).value.trim()
         }
     };
+
+    // DeepSeek has no model field — validated via /user/balance.
+    const deepseekEl = document.getElementById('deepseekEnabled' + suffix);
+    if (deepseekEl) {
+        validators.deepseek = { enabled: deepseekEl.checked };
+    }
 
     // 性能配置
     const performance = {
@@ -170,14 +168,6 @@ async function loadConfig() {
                 if (data.config.validators) {
                     const validators = data.config.validators;
 
-                    if (validators.gemini) {
-                        document.getElementById('geminiEnabled').checked = validators.gemini.enabled;
-                        document.getElementById('geminiModel').value = validators.gemini.model || 'gemini-2.0-flash-exp';
-                    }
-                    if (validators.openrouter) {
-                        document.getElementById('openrouterEnabled').checked = validators.openrouter.enabled;
-                        document.getElementById('openrouterModel').value = validators.openrouter.model || 'deepseek/deepseek-chat-v3:free';
-                    }
                     if (validators.modelscope) {
                         document.getElementById('modelscopeEnabled').checked = validators.modelscope.enabled;
                         document.getElementById('modelscopeModel').value = validators.modelscope.model || 'Qwen/Qwen2-1.5B-Instruct';
@@ -185,6 +175,10 @@ async function loadConfig() {
                     if (validators.siliconflow) {
                         document.getElementById('siliconflowEnabled').checked = validators.siliconflow.enabled;
                         document.getElementById('siliconflowModel').value = validators.siliconflow.model || 'Qwen/Qwen2.5-7B-Instruct';
+                    }
+                    if (validators.deepseek) {
+                        const el = document.getElementById('deepseekEnabled');
+                        if (el) el.checked = validators.deepseek.enabled;
                     }
                 }
 
@@ -422,10 +416,9 @@ function updateScanMode(scanMode) {
         // 转换模式名称为友好显示
         const modeNames = {
             'compatible': '全部平台',
-            'gemini-only': 'Gemini',
-            'openrouter-only': 'OpenRouter',
             'modelscope-only': 'ModelScope',
-            'siliconflow-only': 'SiliconFlow'
+            'siliconflow-only': 'SiliconFlow',
+            'deepseek-only': 'DeepSeek'
         };
 
         modeText.textContent = modeNames[scanMode] || scanMode;
@@ -872,10 +865,9 @@ async function copyKeysByType(type) {
         keys = allKeysCache.filter(k => k.type === type).map(k => k.key);
         if (keys.length === 0) {
             const typeNames = {
-                'gemini': 'Gemini',
-                'openrouter': 'OpenRouter',
                 'modelscope': 'ModelScope',
-                'siliconflow': 'SiliconFlow'
+                'siliconflow': 'SiliconFlow',
+                'deepseek': 'DeepSeek'
             };
             showToast(`暂无 ${typeNames[type] || type} 类型的密钥`, 'warning');
             return;
@@ -919,10 +911,9 @@ async function copyKeysToClipboard(keys, successMessage) {
 
 function getKeyTypeBadge(type) {
     const badges = {
-        'gemini': 'bg-purple-100 text-purple-800',
-        'openrouter': 'bg-blue-100 text-blue-800',
         'modelscope': 'bg-green-100 text-green-800',
-        'siliconflow': 'bg-amber-100 text-amber-800'
+        'siliconflow': 'bg-amber-100 text-amber-800',
+        'deepseek': 'bg-rose-100 text-rose-800'
     };
     return badges[type] || 'bg-slate-100 text-slate-800';
 }
@@ -1286,18 +1277,6 @@ async function loadConfigToModal() {
                 if (data.config.validators) {
                     const validators = data.config.validators;
 
-                    if (validators.gemini) {
-                        const geminiEnabled = document.getElementById('geminiEnabledModal');
-                        const geminiModel = document.getElementById('geminiModelModal');
-                        if (geminiEnabled) geminiEnabled.checked = validators.gemini.enabled;
-                        if (geminiModel) geminiModel.value = validators.gemini.model || 'gemini-2.0-flash-exp';
-                    }
-                    if (validators.openrouter) {
-                        const openrouterEnabled = document.getElementById('openrouterEnabledModal');
-                        const openrouterModel = document.getElementById('openrouterModelModal');
-                        if (openrouterEnabled) openrouterEnabled.checked = validators.openrouter.enabled;
-                        if (openrouterModel) openrouterModel.value = validators.openrouter.model || 'deepseek/deepseek-chat-v3:free';
-                    }
                     if (validators.modelscope) {
                         const modelscopeEnabled = document.getElementById('modelscopeEnabledModal');
                         const modelscopeModel = document.getElementById('modelscopeModelModal');
@@ -1309,6 +1288,10 @@ async function loadConfigToModal() {
                         const siliconflowModel = document.getElementById('siliconflowModelModal');
                         if (siliconflowEnabled) siliconflowEnabled.checked = validators.siliconflow.enabled;
                         if (siliconflowModel) siliconflowModel.value = validators.siliconflow.model || 'Qwen/Qwen2.5-7B-Instruct';
+                    }
+                    if (validators.deepseek) {
+                        const deepseekEnabled = document.getElementById('deepseekEnabledModal');
+                        if (deepseekEnabled) deepseekEnabled.checked = validators.deepseek.enabled;
                     }
                 }
 
@@ -1401,19 +1384,17 @@ function createReportCard(report) {
 
     const modeNames = {
         'compatible': '全部平台',
-        'gemini-only': 'Gemini',
-        'openrouter-only': 'OpenRouter',
         'modelscope-only': 'ModelScope',
-        'siliconflow-only': 'SiliconFlow'
+        'siliconflow-only': 'SiliconFlow',
+        'deepseek-only': 'DeepSeek'
     };
 
     const modeName = modeNames[report.scan_mode] || report.scan_mode;
     const modeColors = {
         'compatible': 'bg-slate-100 text-slate-800',
-        'gemini-only': 'bg-purple-100 text-purple-800',
-        'openrouter-only': 'bg-blue-100 text-blue-800',
         'modelscope-only': 'bg-green-100 text-green-800',
-        'siliconflow-only': 'bg-amber-100 text-amber-800'
+        'siliconflow-only': 'bg-amber-100 text-amber-800',
+        'deepseek-only': 'bg-rose-100 text-rose-800'
     };
     const modeColor = modeColors[report.scan_mode] || 'bg-slate-100 text-slate-800';
 

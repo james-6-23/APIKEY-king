@@ -1,0 +1,22 @@
+# DeepSeek API key extractor configuration
+name: "deepseek"
+enabled: true
+
+# Regular expression patterns for key detection
+# DeepSeek keys are fixed: sk- + 32 lowercase hex chars (35 chars total).
+patterns:
+  strict: "sk-[a-f0-9]{32}"
+
+# Base URLs that must be present in the file for extraction to occur
+base_urls:
+  - "https://api.deepseek.com"
+  - "api.deepseek.com"
+  - "deepseek.com"
+
+# Pattern matching settings
+use_loose_pattern: false
+proximity_chars: 0
+require_key_context: true
+
+# Validation settings
+extract_only: false

@@ -3,14 +3,14 @@ Scanner runner for background execution.
 """
 
 import os
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, Callable
 
 from ...core import ScanMode, APIKeyScanner
 from ...services import ConfigService as AppConfigService, GitHubService, FileService
-from ...extractors import GeminiExtractor, ModelScopeExtractor, OpenRouterExtractor
-from ...validators import GeminiValidator, OpenRouterValidator, ModelScopeValidator
+from ...extractors import ModelScopeExtractor
+from ...validators import ModelScopeValidator
 from ...models import AppConfig
 from ..database.database import db
 
@@ -76,32 +76,44 @@ class ScannerRunner:
             # Update total queries for progress
             self.stats["total_queries"] = len(queries)
 
+            # Precompute normalized queries and load the processed set ONCE
+            # (previously we issued one SQL round-trip per query per loop).
+            normalized_queries = [" ".join(q.split()) for q in queries]
+            processed_queries = db.get_processed_queries_set()
+            # Ditto for scanned SHAs — the inner loop used to hit the DB once
+            # per item which became the dominant latency at high item counts.
+            scanned_shas = db.get_scanned_shas_set()
+
+            # Concurrency for file fetches. The inner loop is IO-bound (one
+            # HTTPS roundtrip per item) — serial was wasting the budget the
+            # user already set in performance.max_concurrent.
+            performance_cfg = self.config.get("performance") or {}
+            try:
+                max_concurrent = int(performance_cfg.get("max_concurrent", 5))
+            except (TypeError, ValueError):
+                max_concurrent = 5
+            max_concurrent = max(1, min(max_concurrent, 20))
+
             # Scan loop
             loop_count = 0
             while not stop_flag():
                 loop_count += 1
                 self.log_service.add_log("info", f"Starting scan loop #{loop_count}")
 
-                # Check if all queries have been processed
-                all_processed = True
-                for query in queries:
-                    normalized_query = " ".join(query.split())
-                    if not db.is_query_processed(normalized_query):
-                        all_processed = False
-                        break
-                
-                if all_processed:
+                # Fast in-memory check — O(len(queries)) set lookups.
+                if all(nq in processed_queries for nq in normalized_queries):
                     self.log_service.add_log("success", "All queries have been processed! Scan completed.")
                     break
 
                 queries_processed_this_loop = 0
-                for i, query in enumerate(queries, 1):
+                for i, (query, normalized_query) in enumerate(zip(queries, normalized_queries), 1):
                     if stop_flag():
                         break
 
-                    # 暂停检查
-                    while self.scan_service.is_paused() and not stop_flag():
-                        time.sleep(1)
+                    # 暂停检查 — interruptible wait: returns True immediately if stop fires
+                    while self.scan_service.is_paused():
+                        if self.scan_service.wait_or_stop(1.0):
+                            break
 
                     if stop_flag():
                         break
@@ -109,10 +121,7 @@ class ScannerRunner:
                     # 更新进度
                     self.scan_service.update_progress(i, len(queries), query[:50])
 
-                    normalized_query = " ".join(query.split())
-
-                    # 从数据库检查是否已处理
-                    if db.is_query_processed(normalized_query):
+                    if normalized_query in processed_queries:
                         continue
 
                     queries_processed_this_loop += 1
@@ -125,77 +134,105 @@ class ScannerRunner:
 
                         if not items:
                             db.add_processed_query(normalized_query)
+                            processed_queries.add(normalized_query)
                             continue
 
                         self.log_service.add_log("info", f"Found {len(items)} items for query {i}")
 
-                        # Process items
-                        for item_idx, item in enumerate(items, 1):
-                            if stop_flag():
-                                break
+                        # Filter out SHAs we've already processed BEFORE submitting
+                        # to the pool — saves on wasted GitHub roundtrips.
+                        pending = [it for it in items if not (it.get("sha") and it.get("sha") in scanned_shas)]
+                        skipped = len(items) - len(pending)
+                        if skipped:
+                            self.log_service.add_log("info", f"Skipped {skipped} already-scanned items")
 
-                            # 检查是否已扫描（从数据库）
-                            sha = item.get("sha")
-                            if sha and db.is_sha_scanned(sha):
-                                continue
-
-                            # Get file content
-                            content = github_service.get_file_content(item)
-                            if not content:
-                                continue
-
-                            # Scan content
-                            context = {
-                                'file_path': item.get('path', ''),
-                                'repository': item.get('repository', {}),
+                        # Concurrent fetch (IO-bound), serial scan/validate/save.
+                        # Validation stays on the main thread to avoid any
+                        # third-party SDK that mutates process-global state.
+                        with ThreadPoolExecutor(
+                            max_workers=max_concurrent,
+                            thread_name_prefix="apikey-fetch",
+                        ) as pool:
+                            future_to_item = {
+                                pool.submit(github_service.get_file_content, it): it
+                                for it in pending
                             }
+                            try:
+                                for fut in as_completed(future_to_item):
+                                    if stop_flag():
+                                        # Cancel queued futures; in-flight ones
+                                        # will finish and be discarded below.
+                                        for f in future_to_item:
+                                            f.cancel()
+                                        break
 
-                            scan_results = scanner.scan_content(content, context)
+                                    item = future_to_item[fut]
+                                    try:
+                                        content = fut.result()
+                                    except Exception as e:
+                                        self.log_service.add_log("error", f"Fetch failed: {type(e).__name__}: {e}")
+                                        continue
 
-                            if scan_results['summary']['total_keys_found'] > 0:
-                                self.log_service.add_log("success", f"Found {scan_results['summary']['total_keys_found']} keys", {
-                                    "file": item.get('path', ''),
-                                    "repo": item.get('repository', {}).get('full_name', '')
-                                })
+                                    if not content:
+                                        continue
 
-                                # Save keys
-                                for key, validation_result in scan_results['validation_results'].items():
-                                    if validation_result.is_valid:
-                                        key_type = self._determine_key_type(key)
+                                    sha = item.get("sha")
+                                    repo_full = item.get('repository', {}).get('full_name', '')
+                                    file_path = item.get('path', '')
 
-                                        # 从 metadata 中提取余额信息（目前只有 siliconflow 支持）
-                                        balance = None
-                                        if validation_result.metadata:
-                                            total_balance = validation_result.metadata.get('total_balance')
-                                            if total_balance:
-                                                balance = total_balance
+                                    context = {
+                                        'file_path': file_path,
+                                        'repository': item.get('repository', {}),
+                                    }
 
-                                        # 保存到数据库
-                                        db.save_key(
-                                            key_value=key,
-                                            key_type=key_type,
-                                            source_repo=item.get('repository', {}).get('full_name', ''),
-                                            source_file=item.get('path', ''),
-                                            source_url=item.get('html_url', ''),
-                                            is_valid=True,
-                                            validation_status='valid',
-                                            validation_message=None,
-                                            balance=balance
-                                        )
+                                    scan_results = scanner.scan_content(content, context)
 
-                                        self.stats["valid_keys"] += 1
+                                    if scan_results['summary']['total_keys_found'] > 0:
+                                        self.log_service.add_log("success", f"Found {scan_results['summary']['total_keys_found']} keys", {
+                                            "file": file_path,
+                                            "repo": repo_full,
+                                        })
 
-                            # 保存到数据库记忆
-                            db.add_scanned_sha(
-                                item.get("sha"),
-                                item.get('path', ''),
-                                item.get('repository', {}).get('full_name', '')
-                            )
-                            self.stats["total_files"] += 1
-                            self.stats["last_update"] = datetime.now().isoformat()
+                                        for key, validation_result in scan_results['validation_results'].items():
+                                            if validation_result.is_valid:
+                                                key_type = self._determine_key_type(key)
+                                                balance = None
+                                                if validation_result.metadata:
+                                                    total_balance = validation_result.metadata.get('total_balance')
+                                                    if total_balance:
+                                                        balance = total_balance
+
+                                                db.save_key(
+                                                    key_value=key,
+                                                    key_type=key_type,
+                                                    source_repo=repo_full,
+                                                    source_file=file_path,
+                                                    source_url=item.get('html_url', ''),
+                                                    is_valid=True,
+                                                    validation_status='valid',
+                                                    validation_message=None,
+                                                    balance=balance,
+                                                )
+                                                self.stats["valid_keys"] += 1
+
+                                    if sha:
+                                        db.add_scanned_sha(sha, file_path, repo_full)
+                                        scanned_shas.add(sha)
+                                    self.stats["total_files"] += 1
+                                    self.stats["last_update"] = datetime.now().isoformat()
+                            finally:
+                                # Defensive: if we broke out on stop_flag, ensure
+                                # in-flight fetches don't leak past the with-block.
+                                # ThreadPoolExecutor.__exit__ already waits, but
+                                # keeps the semantics explicit.
+                                pass
+
+                        if stop_flag():
+                            break
 
                         # 标记查询已处理
                         db.add_processed_query(normalized_query)
+                        processed_queries.add(normalized_query)
                         self.stats["queries_completed"] = self.stats.get("queries_completed", 0) + 1
 
                     except Exception as e:
@@ -209,7 +246,9 @@ class ScannerRunner:
                 
                 if not stop_flag():
                     self.log_service.add_log("info", "Scan loop complete, sleeping 10 seconds...")
-                    time.sleep(10)
+                    # Interruptible sleep — stop fires break out immediately.
+                    if self.scan_service.wait_or_stop(10.0):
+                        break
 
             if stop_flag():
                 self.log_service.add_log("warning", "Scanner stopped by user")
@@ -227,24 +266,12 @@ class ScannerRunner:
     
     def _apply_scan_mode_config(self, config: AppConfig, scan_mode: ScanMode):
         """Apply scan mode configuration."""
-        if scan_mode == ScanMode.OPENROUTER_ONLY:
-            for name, extractor_config in config.extractors.items():
-                extractor_config.enabled = (name == 'openrouter')
-            for name, validator_config in config.validators.items():
-                validator_config.enabled = (name == 'openrouter')
-            config.scan.queries_file = "config/queries/openrouter.txt"
-        elif scan_mode == ScanMode.MODELSCOPE_ONLY:
+        if scan_mode == ScanMode.MODELSCOPE_ONLY:
             for name, extractor_config in config.extractors.items():
                 extractor_config.enabled = (name == 'modelscope')
             for name, validator_config in config.validators.items():
                 validator_config.enabled = (name == 'modelscope')
             config.scan.queries_file = "config/queries/modelscope.txt"
-        elif scan_mode == ScanMode.GEMINI_ONLY:
-            for name, extractor_config in config.extractors.items():
-                extractor_config.enabled = (name == 'gemini')
-            for name, validator_config in config.validators.items():
-                validator_config.enabled = (name == 'gemini')
-            config.scan.queries_file = "config/queries/gemini.txt"
         elif scan_mode == ScanMode.SILICONFLOW_ONLY:
             for name, extractor_config in config.extractors.items():
                 extractor_config.enabled = (name == 'siliconflow')
@@ -259,16 +286,15 @@ class ScannerRunner:
             if not extractor_config.enabled:
                 continue
             
-            if name == 'gemini':
-                extractors.append(GeminiExtractor(extractor_config))
-            elif name == 'modelscope':
+            if name == 'modelscope':
                 extractors.append(ModelScopeExtractor(extractor_config))
-            elif name == 'openrouter':
-                extractors.append(OpenRouterExtractor(extractor_config))
             elif name == 'siliconflow':
                 from ...extractors.siliconflow import SiliconFlowExtractor
                 extractors.append(SiliconFlowExtractor(extractor_config))
-        
+            elif name == 'deepseek':
+                from ...extractors.deepseek import DeepSeekExtractor
+                extractors.append(DeepSeekExtractor(extractor_config))
+
         return extractors
     
     def _create_validators_with_config(self, config: AppConfig, custom_validators: dict):
@@ -288,15 +314,7 @@ class ScannerRunner:
                 continue
             
             try:
-                if name == 'gemini':
-                    validator = GeminiValidator(validator_config)
-                    validators.append(validator)
-                    self.log_service.add_log("info", f"Initialized {name} validator", {"model": validator_config.model})
-                elif name == 'openrouter':
-                    validator = OpenRouterValidator(validator_config)
-                    validators.append(validator)
-                    self.log_service.add_log("info", f"Initialized {name} validator", {"model": validator_config.model})
-                elif name == 'modelscope':
+                if name == 'modelscope':
                     validator = ModelScopeValidator(validator_config)
                     validators.append(validator)
                     self.log_service.add_log("info", f"Initialized {name} validator", {"model": validator_config.model})
@@ -305,6 +323,12 @@ class ScannerRunner:
                     validator = SiliconFlowValidator(validator_config)
                     validators.append(validator)
                     self.log_service.add_log("info", f"Initialized {name} validator", {"model": validator_config.model})
+                elif name == 'deepseek':
+                    from ...validators.deepseek import DeepSeekValidator
+                    validator = DeepSeekValidator(validator_config)
+                    validators.append(validator)
+                    # DeepSeek validates via /user/balance — no model field is used.
+                    self.log_service.add_log("info", f"Initialized {name} validator", {"endpoint": "api.deepseek.com/user/balance"})
             except Exception as e:
                 self.log_service.add_log("error", f"Failed to create {name} validator: {str(e)}")
         
@@ -332,12 +356,13 @@ class ScannerRunner:
     
     def _determine_key_type(self, key: str) -> str:
         """Determine key type from key format."""
-        if key.startswith('AIzaSy'):
-            return 'gemini'
-        elif key.startswith('sk-or-v1-'):
-            return 'openrouter'
-        elif key.startswith('ms-'):
+        import re
+        if key.startswith('ms-'):
             return 'modelscope'
+        # DeepSeek keys are 'sk-' + 32 hex chars (length 35). Check before the
+        # generic SiliconFlow fallback since both share the 'sk-' prefix.
+        elif re.match(r'^sk-[a-f0-9]{32}$', key, re.IGNORECASE):
+            return 'deepseek'
         elif key.startswith('sk-'):
             return 'siliconflow'
         else:

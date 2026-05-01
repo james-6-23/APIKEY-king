@@ -2,19 +2,23 @@
 Configuration service.
 """
 
+import threading
 from typing import Dict, Optional
 from ..database.database import db
 from ..schemas.config import ConfigRequest, ValidatorConfig
 
 log_service = None
+_log_service_lock = threading.Lock()
 
 
 def get_log_service():
-    """Get log service instance (lazy loading to avoid circular import)."""
+    """Get log service instance (thread-safe lazy init)."""
     global log_service
     if log_service is None:
-        from .log_service import LogService
-        log_service = LogService()
+        with _log_service_lock:
+            if log_service is None:
+                from .log_service import LogService
+                log_service = LogService()
     return log_service
 
 
@@ -28,10 +32,9 @@ class ConfigService:
         """Save configuration to database."""
         # 准备验证器配置
         validators_config = request.validators or {
-            "gemini": ValidatorConfig(enabled=True, model="gemini-2.0-flash-exp"),
-            "openrouter": ValidatorConfig(enabled=True, model="deepseek/deepseek-chat-v3:free"),
             "modelscope": ValidatorConfig(enabled=True, model="Qwen/Qwen2-1.5B-Instruct"),
             "siliconflow": ValidatorConfig(enabled=True, model="Qwen/Qwen2.5-7B-Instruct"),
+            "deepseek": ValidatorConfig(enabled=True),
         }
         
         # 准备性能配置

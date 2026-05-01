@@ -20,7 +20,7 @@ async def get_keys(
     """
     Get discovered keys with optional filtering.
     
-    - **key_type**: Filter by key type (gemini, openrouter, modelscope, siliconflow)
+    - **key_type**: Filter by key type (modelscope, siliconflow, deepseek)
     - **search**: Search in key value or source repository
     """
     try:

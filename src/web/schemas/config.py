@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 class ValidatorConfig(BaseModel):
     """Validator configuration model."""
     enabled: bool = True
-    model: str
+    # Optional: DeepSeek validates via /user/balance and has no model dimension.
+    model: Optional[str] = None
 
 
 class PerformanceConfig(BaseModel):

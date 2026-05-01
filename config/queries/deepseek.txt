@@ -1,0 +1,12 @@
+# DeepSeek 专项查询规则
+# DeepSeek 密钥格式: sk-[a-f0-9]{32}
+
+# 通过域名定位
+"https://api.deepseek.com" in:file
+"api.deepseek.com" in:file
+"deepseek" AND "api_key" in:file
+"deepseek" AND "Bearer" in:file
+
+# SDK / 配置
+"deepseek" in:file filename:.env
+"base_url" AND "deepseek" in:file

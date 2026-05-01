@@ -4,1136 +4,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="APIKEY-king - API Key Discovery Tool">
-    <title>APIKEY-king - 可视化控制台</title>
+    <meta name="description" content="APIKEY-king · Surveillance Console">
+    <title>APIKEY-king · 控制台</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-        rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: {
-                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
-                            foreground: "hsl(210 40% 98%)",
-                        },
-                        success: {
-                            DEFAULT: "hsl(142.1 76.2% 36.3%)",
-                            foreground: "hsl(355.7 100% 97.3%)",
-                        },
-                        destructive: {
-                            DEFAULT: "hsl(0 84.2% 60.2%)",
-                            foreground: "hsl(210 40% 98%)",
-                        },
+                        primary: { DEFAULT: "hsl(222.2 47.4% 11.2%)", foreground: "hsl(210 40% 98%)" },
+                        success: { DEFAULT: "hsl(142.1 76.2% 36.3%)", foreground: "hsl(355.7 100% 97.3%)" },
+                        destructive: { DEFAULT: "hsl(0 84.2% 60.2%)", foreground: "hsl(210 40% 98%)" }
                     }
                 }
             }
         }
     </script>
-    <style>
-        :root {
-            --ink-900: #050816;
-            --ink-700: #0b132b;
-            --ink-500: #192742;
-            --glass-light: rgba(255, 255, 255, 0.7);
-            --glass-dark: rgba(15, 23, 42, 0.6);
-            --glass-border-light: rgba(255, 255, 255, 0.5);
-            --glass-border-dark: rgba(148, 163, 184, 0.1);
-            --accent-1: #56ccf2;
-            --accent-2: #7c3aed;
-            --accent-3: #22d3ee;
-            --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-        }
-
-        body {
-            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: radial-gradient(circle at 10% 20%, rgba(87, 101, 242, 0.08), transparent 40%),
-                radial-gradient(circle at 90% 10%, rgba(34, 211, 238, 0.1), transparent 40%),
-                radial-gradient(circle at 50% 90%, rgba(124, 58, 237, 0.15), transparent 45%),
-                #f8fafc;
-            position: relative;
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-
-        .dark body {
-            background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.15), transparent 30%),
-                radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.15), transparent 30%),
-                #020617;
-        }
-
-        .bg-grid {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background-image:
-                linear-gradient(rgba(100, 116, 139, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(100, 116, 139, 0.08) 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.6;
-            z-index: 0;
-            mask-image: linear-gradient(to bottom, transparent, black, transparent);
-        }
-
-        .dark .bg-grid {
-            background-image:
-                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-        }
-
-        .bg-ambient {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            filter: blur(80px);
-            background: radial-gradient(circle at 15% 40%, rgba(124, 58, 237, 0.15), transparent 40%),
-                radial-gradient(circle at 80% 30%, rgba(34, 211, 238, 0.18), transparent 40%),
-                radial-gradient(circle at 40% 70%, rgba(59, 130, 246, 0.15), transparent 40%);
-            z-index: 0;
-            opacity: 0.8;
-        }
-
-        @keyframes pulseBorder {
-            0% {
-                box-shadow: 0 0 0 0 rgba(86, 204, 242, 0.4);
-                border-color: rgba(86, 204, 242, 0.8);
-            }
-
-            70% {
-                box-shadow: 0 0 0 12px rgba(86, 204, 242, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(86, 204, 242, 0);
-                border-color: rgba(69, 185, 222, 0.5);
-            }
-        }
-
-        .glass-card {
-            background: var(--glass-light);
-            border: 1px solid var(--glass-border-light);
-            box-shadow: var(--shadow-premium);
-            backdrop-filter: saturate(180%) blur(20px);
-            position: relative;
-            z-index: 1;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .card-hover:hover {
-            transform: translateY(-4px) scale(1.005);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-            border-color: rgba(99, 102, 241, 0.4);
-        }
-
-        .dark .glass-card {
-            background: var(--glass-dark);
-            border-color: var(--glass-border-dark);
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
-            backdrop-filter: saturate(180%) blur(20px);
-        }
-
-        .dark .card-hover:hover {
-            border-color: rgba(124, 58, 237, 0.5);
-            box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.6);
-        }
-
-        .neon-text {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #2dd4bf 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.3));
-        }
-
-        .dark .neon-text {
-            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #5eead4 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.4));
-        }
-
-        .glow-button {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .glow-button::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transform: skewX(-20deg);
-            transition: 0.5s;
-        }
-
-        .glow-button:hover::after {
-            left: 150%;
-            transition: 0.7s ease-in-out;
-        }
-
-        .glow-button:active {
-            transform: scale(0.97);
-        }
-
-        /* Loading Spinner */
-        .spinner-line {
-            animation: spin 1s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Animations */
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .animate-in {
-            animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        .animate-scale {
-            animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        /* Custom Scrollbar for Logs */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.5);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(148, 163, 184, 0.8);
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(71, 85, 105, 0.5);
-        }
-
-        /* Refresh Button Animation */
-        .refresh-spin {
-            animation: spin 1s linear infinite;
-        }
-
-        /* UI Element Polishing */
-        input:focus,
-        select:focus,
-        textarea:focus {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-            border-color: #3b82f6;
-        }
-
-        .dark input:focus,
-        .dark select:focus,
-        .dark textarea:focus {
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
-            border-color: #60a5fa;
-        }
-
-        /* Dark Mode overrides */
-        .dark {
-            background-color: #020617;
-            color: #f1f5f9;
-        }
-
-        .dark .bg-white {
-            background-color: #0f172a;
-        }
-
-        .dark .bg-slate-50 {
-            background-color: #020617;
-        }
-
-        .dark .border-slate-200 {
-            border-color: #1e293b;
-        }
-
-        .dark .text-slate-900 {
-            color: #f8fafc;
-        }
-
-        .dark .text-slate-700 {
-            color: #e2e8f0;
-        }
-
-        .dark .text-slate-600 {
-            color: #94a3b8;
-        }
-
-        .dark .text-slate-500 {
-            color: #64748b;
-        }
-
-        .dark input,
-        .dark textarea,
-        .dark select {
-            background-color: #0f172a;
-            border-color: #1e293b;
-            color: #f1f5f9;
-        }
-
-        .dark .bg-slate-50 {
-            background-color: #0f172a;
-        }
-
-        /* Toast Progress Animation */
-        @keyframes toastProgress {
-            from {
-                transform: scaleX(1);
-            }
-
-            to {
-                transform: scaleX(0);
-            }
-        }
-
-        /* Toast entrance animation */
-        @keyframes toastSlideIn {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        /* Toast exit animation */
-        @keyframes toastSlideOut {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-        }
-
-        /* Page transition animations */
-        .page-enter {
-            animation: pageEnter 0.4s ease-out forwards;
-        }
-
-        .page-exit {
-            animation: pageExit 0.3s ease-in forwards;
-        }
-
-        @keyframes pageEnter {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pageExit {
-            from {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            to {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-        }
-
-        /* Hidden page state */
-        .hidden {
-            display: none !important;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body class="bg-slate-50 min-h-screen transition-colors duration-200 relative overflow-x-hidden">
+    <!-- legacy ambient/grid divs preserved but hidden by styles.css -->
     <div class="bg-ambient"></div>
     <div class="bg-grid"></div>
 
-    <!-- Main Dashboard -->
-    <div id="dashboardPage" class="relative z-10">
-        <!-- Header -->
-        <div
-            class="bg-white/85 dark:bg-slate-900/75 backdrop-blur-lg border-b border-white/60 dark:border-slate-700/60 shadow-lg">
-            <div class="container mx-auto px-4 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400/90 via-blue-500/90 to-purple-500/90 flex items-center justify-center text-white shadow-lg ring-1 ring-white/40 animate-[pulseBorder_3s_infinite]">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
-                                </path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h1 class="text-2xl font-bold text-slate-900 neon-text">APIKEY-king</h1>
-                            <p class="text-xs text-slate-500">可视化控制台</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="showReportsDialog()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
-                            title="扫描报告">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                        </button>
-                        <button onclick="showConfigDialog()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
-                            title="扫描配置">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
-                                </path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                        </button>
-                        <button onclick="toggleDarkMode()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
-                            title="切换主题">
-                            <svg id="darkModeIcon" class="w-5 h-5" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
-                                </path>
-                            </svg>
-                        </button>
-                        <button onclick="showChangePasswordDialog()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 flex items-center gap-2 transition"
-                            title="修改密码">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
-                                </path>
-                            </svg>
-                        </button>
-                        <button onclick="window.open('/api/docs', '_blank')"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
-                            title="API文档">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                        </button>
-                        <button onclick="handleLogout()"
-                            class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 border border-white/60 dark:border-white/10 rounded-lg hover:bg-white/90 dark:hover:bg-white/20 transition"
-                            title="退出登录">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- ============================================================
+         DASHBOARD
+         ============================================================ -->
+    <div id="dashboardPage">
 
-        <div class="container mx-auto px-4 py-8 max-w-7xl">
-            <!-- Stats Cards with Charts -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in" style="animation-delay: 0.1s;"
-                id="statsCards">
-                <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-slate-600">扫描文件数</p>
-                            <p class="text-2xl font-bold text-slate-900 mt-1" id="statFiles">0</p>
-                        </div>
-                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                        </div>
+        <header class="site-header">
+            <div class="site-header__inner">
+                <div class="site-header__brand">
+                    <div class="prompt">
+                        <span>&gt; apikey-king</span>
+                        <span class="ink-3">:: surveillance console</span>
+                        <span class="cursor-block" aria-hidden="true"></span>
+                    </div>
+                    <div class="classify">
+                        <span class="pill">CLASSIFICATION · OPERATIONAL</span>
+                        <span>SESSION #<span id="sessionTag">a7f2</span></span>
+                        <span>CHANNELS · GEMINI / OPENROUTER / MODELSCOPE / SILICONFLOW</span>
                     </div>
                 </div>
-                <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-slate-600">发现密钥数</p>
-                            <p class="text-2xl font-bold text-slate-900 mt-1" id="statKeys">0</p>
-                        </div>
-                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
-                                </path>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-                <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg p-5">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-slate-600">有效密钥数</p>
-                            <p class="text-2xl font-bold text-success mt-1" id="statValidKeys">0</p>
-                        </div>
-                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Configuration Card - Hidden, moved to modal -->
+                <nav class="op-rail" aria-label="primary actions">
+                    <button class="op-link" onclick="showReportsDialog()" title="扫描报告">
+                        <span class="key">[R]</span>REPORTS
+                    </button>
+                    <button class="op-link" onclick="showConfigDialog()" title="扫描配置">
+                        <span class="key">[C]</span>CONFIG
+                    </button>
+                    <button class="op-link" onclick="toggleDarkMode()" title="切换主题">
+                        <span class="key">[D]</span>THEME
+                        <svg id="darkModeIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                            </path>
+                        </svg>
+                    </button>
+                    <button class="op-link" onclick="showChangePasswordDialog()" title="修改密码">
+                        <span class="key">[P]</span>PASSWD
+                    </button>
+                    <button class="op-link" onclick="window.open('/api/docs', '_blank')" title="API 文档">
+                        <span class="key">[A]</span>API
+                    </button>
+                    <button class="op-link" onclick="handleLogout()" title="退出登录">
+                        <span class="key">[X]</span>LOGOUT
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="grid-shell">
+
+            <!-- ====================================================
+                 STATS BAR
+                 ==================================================== -->
+            <section class="stats-bar animate-in" id="statsCards">
+                <div class="stats-cell">
+                    <div class="stats-cell__label" data-idx="01">Files Scanned</div>
+                    <div class="stats-cell__value" id="statFiles">0</div>
+                    <div class="stats-cell__sub">cumulative · session</div>
+                </div>
+                <div class="stats-cell">
+                    <div class="stats-cell__label" data-idx="02">Keys Discovered</div>
+                    <div class="stats-cell__value" id="statKeys">0</div>
+                    <div class="stats-cell__sub">pre-validation</div>
+                </div>
+                <div class="stats-cell stats-cell--signal">
+                    <div class="stats-cell__label" data-idx="03">Keys Validated</div>
+                    <div class="stats-cell__value" id="statValidKeys">0</div>
+                    <div class="stats-cell__sub">live credentials</div>
+                </div>
+            </section>
+
+            <!-- ====================================================
+                 HIDDEN CONFIG TEMPLATE (cloned by app.js into modal)
+                 ==================================================== -->
             <div class="hidden bg-white rounded-lg border border-slate-200 shadow-sm mb-6" id="configCardOld">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-slate-900">扫描配置</h2>
                         <div class="flex gap-2">
-                            <button onclick="loadQueryStats()"
+                            <button type="button" onclick="loadQueryStats()"
                                 class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
                                 <span id="queryInfo">查看搜寻规则</span>
                             </button>
-                            <button onclick="hideConfigDialog()"
-                                class="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                                <span>关闭</span>
-                            </button>
+                            <button type="button" onclick="hideConfigDialog()"
+                                class="text-sm text-slate-600 hover:text-slate-900">关闭</button>
                         </div>
                     </div>
+
                     <form id="configForm" onsubmit="handleSaveConfig(event)">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">GitHub Tokens
-                                    (每行一个)</label>
-                                <textarea id="githubTokens" rows="3"
-                                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary font-mono"
-                                    placeholder="ghp_xxxxxxxxxxxxx" required></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">代理地址 (可选)</label>
-                                <input type="text" id="proxy"
-                                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                                    placeholder="http://localhost:1080" />
-                                <label class="block text-sm font-medium text-slate-700 mb-2 mt-3">日期范围 (天)</label>
-                                <input type="number" id="dateRange" value="730"
-                                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-slate-700 mb-2">扫描模式</label>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                <label
-                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
-                                    <input type="radio" name="scanMode" value="compatible" checked class="mr-2" />
-                                    <span class="text-sm">全部平台</span>
-                                </label>
-                                <label
-                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
-                                    <input type="radio" name="scanMode" value="gemini-only" class="mr-2" />
-                                    <span class="text-sm">Gemini</span>
-                                </label>
-                                <label
-                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
-                                    <input type="radio" name="scanMode" value="openrouter-only" class="mr-2" />
-                                    <span class="text-sm">OpenRouter</span>
-                                </label>
-                                <label
-                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
-                                    <input type="radio" name="scanMode" value="modelscope-only" class="mr-2" />
-                                    <span class="text-sm">ModelScope</span>
-                                </label>
-                                <label
-                                    class="flex items-center px-4 py-2 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
-                                    <input type="radio" name="scanMode" value="siliconflow-only" class="mr-2" />
-                                    <span class="text-sm">SiliconFlow</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- 渠道验证配置 -->
-                        <div class="mb-4">
-                            <h3 class="text-lg font-semibold text-slate-900 mb-3">渠道验证配置</h3>
-
-                            <!-- Gemini -->
-                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-2">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="geminiEnabled" checked class="mr-2" />
-                                        <span class="font-medium text-slate-700">Gemini 验证</span>
-                                    </label>
+                        <!-- credentials -->
+                        <div class="form-section">
+                            <div class="form-section__title">// 01 — credentials</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="field-label">GitHub Tokens · one per line</label>
+                                    <textarea id="githubTokens" rows="3" placeholder="ghp_xxxxxxxxxxxxx" required></textarea>
                                 </div>
-                                <div class="ml-6">
-                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
-                                    <input type="text" id="geminiModel" value="gemini-2.0-flash-exp"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-
-                            <!-- OpenRouter -->
-                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-2">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="openrouterEnabled" checked class="mr-2" />
-                                        <span class="font-medium text-slate-700">OpenRouter 验证</span>
-                                    </label>
-                                </div>
-                                <div class="ml-6">
-                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
-                                    <input type="text" id="openrouterModel" value="deepseek/deepseek-chat-v3:free"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-
-                            <!-- ModelScope -->
-                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-2">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="modelscopeEnabled" checked class="mr-2" />
-                                        <span class="font-medium text-slate-700">ModelScope 验证</span>
-                                    </label>
-                                </div>
-                                <div class="ml-6">
-                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
-                                    <input type="text" id="modelscopeModel" value="Qwen/Qwen2-1.5B-Instruct"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-
-                            <!-- SiliconFlow -->
-                            <div class="mb-3 p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-2">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="siliconflowEnabled" checked class="mr-2" />
-                                        <span class="font-medium text-slate-700">SiliconFlow 验证</span>
-                                    </label>
-                                </div>
-                                <div class="ml-6">
-                                    <label class="block text-xs text-slate-600 mb-1">验证模型</label>
-                                    <input type="text" id="siliconflowModel" value="Qwen/Qwen2.5-7B-Instruct"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                                <div>
+                                    <label class="field-label">Proxy · optional</label>
+                                    <input type="text" id="proxy" placeholder="http://localhost:1080" />
+                                    <label class="field-label" style="margin-top:14px;">Date range · days</label>
+                                    <input type="number" id="dateRange" value="730" />
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 性能配置 -->
-                        <div class="mb-4">
-                            <h3 class="text-lg font-semibold text-slate-900 mb-3">性能配置</h3>
+                        <!-- scan mode -->
+                        <div class="form-section">
+                            <div class="form-section__title">// 02 — scan mode</div>
+                            <div class="radio-bar">
+                                <label><input type="radio" name="scanMode" value="compatible" checked /><span>ALL</span></label>
+                                <label><input type="radio" name="scanMode" value="modelscope-only" /><span>ModelScope</span></label>
+                                <label><input type="radio" name="scanMode" value="siliconflow-only" /><span>SiliconFlow</span></label>
+                            </div>
+                        </div>
+
+                        <!-- channels -->
+                        <div class="form-section">
+                            <div class="form-section__title">// 03 — channel validators</div>
+
+                            <div class="channel-block">
+                                <div class="channel-block__head">
+                                    <label><input type="checkbox" id="modelscopeEnabled" checked /> ModelScope · validate</label>
+                                </div>
+                                <div class="channel-block__row">
+                                    <label class="field-label">Validation model</label>
+                                    <input type="text" id="modelscopeModel" value="Qwen/Qwen2-1.5B-Instruct" />
+                                </div>
+                            </div>
+
+                            <div class="channel-block">
+                                <div class="channel-block__head">
+                                    <label><input type="checkbox" id="siliconflowEnabled" checked /> SiliconFlow · validate</label>
+                                </div>
+                                <div class="channel-block__row">
+                                    <label class="field-label">Validation model</label>
+                                    <input type="text" id="siliconflowModel" value="Qwen/Qwen2.5-7B-Instruct" />
+                                </div>
+                            </div>
+
+                            <div class="channel-block">
+                                <div class="channel-block__head">
+                                    <label><input type="checkbox" id="deepseekEnabled" checked /> DeepSeek · validate</label>
+                                </div>
+                                <div class="channel-block__row">
+                                    <p class="help-text">Validated via <code>/user/balance</code> — no model field needed.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- performance -->
+                        <div class="form-section">
+                            <div class="form-section__title">// 04 — performance tuning</div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-xs text-slate-600 mb-1">最大并发文件数</label>
-                                    <input type="number" id="maxConcurrent" value="5" min="1" max="20"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <p class="text-xs text-slate-500 mt-1">建议: 5-10</p>
+                                    <label class="field-label">Max concurrent files</label>
+                                    <input type="number" id="maxConcurrent" value="5" min="1" max="20" />
+                                    <p class="help-text">advise · 5 — 10</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-600 mb-1">请求间隔（秒）</label>
-                                    <input type="number" id="requestDelay" value="1.0" min="0" max="10" step="0.1"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <p class="text-xs text-slate-500 mt-1">避免限流</p>
+                                    <label class="field-label">Request delay (s)</label>
+                                    <input type="number" id="requestDelay" value="1.0" min="0" max="10" step="0.1" />
+                                    <p class="help-text">avoid rate-limit</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-600 mb-1">GitHub超时（秒）</label>
-                                    <input type="number" id="githubTimeout" value="30" min="10" max="120"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <p class="text-xs text-slate-500 mt-1">网络慢时增加</p>
+                                    <label class="field-label">GitHub timeout (s)</label>
+                                    <input type="number" id="githubTimeout" value="30" min="10" max="120" />
+                                    <p class="help-text">raise on slow link</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-600 mb-1">验证超时（秒）</label>
-                                    <input type="number" id="validationTimeout" value="30" min="10" max="120"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <p class="text-xs text-slate-500 mt-1">API响应慢时增加</p>
+                                    <label class="field-label">Validation timeout (s)</label>
+                                    <input type="number" id="validationTimeout" value="30" min="10" max="120" />
+                                    <p class="help-text">raise on slow upstream</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-600 mb-1">最大重试次数</label>
-                                    <input type="number" id="maxRetries" value="3" min="0" max="10"
-                                        class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <p class="text-xs text-slate-500 mt-1">失败后重试</p>
+                                    <label class="field-label">Max retries</label>
+                                    <input type="number" id="maxRetries" value="3" min="0" max="10" />
+                                    <p class="help-text">on failure</p>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="submit"
-                            class="px-6 py-2.5 bg-primary text-white rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary">
-                            保存配置
+                        <button type="submit" class="op-btn op-btn--primary glow-button">
+                            <span class="key">[↵]</span>SAVE CONFIG
                         </button>
                     </form>
                 </div>
             </div>
 
-            <!-- Control Panel -->
-            <!-- Control Panel -->
-            <div class="glass-card card-hover rounded-xl border border-white/50 shadow-lg mb-8 animate-in"
-                style="animation-delay: 0.2s;">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                <span class="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full"></span>
-                                扫描控制
-                            </h2>
-                        </div>
-                        <div id="currentScanMode"
-                            class="hidden px-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg backdrop-blur-sm">
-                            <span class="text-sm text-blue-900 dark:text-blue-300 font-medium">当前渠道: </span>
-                            <span id="scanModeText" class="text-sm text-blue-700 dark:text-blue-400 font-bold">-</span>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap gap-4 mb-6">
-                        <button id="btnStart" onclick="handleStartScan()"
-                            class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-emerald-400 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex items-center gap-2 shadow-lg shadow-emerald-500/20 glow-button transition-all duration-300 hover:-translate-y-0.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
-                                </path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            开始扫描 </button>
-                        <button id="btnPause" onclick="handlePauseScan()"
-                            class="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg shadow-amber-500/20 glow-button transition-all duration-300"
-                            disabled>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            暂停
-                        </button>
-                        <button id="btnResume" onclick="handleResumeScan()"
-                            class="hidden px-8 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 shadow-lg glow-button transition-all duration-300"
-                            disabled>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
-                                </path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            继续
-                        </button>
-                        <button id="btnStop" onclick="handleStopScan()"
-                            class="px-8 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 opacity-50 cursor-not-allowed shadow-lg shadow-red-500/20 glow-button transition-all duration-300"
-                            disabled>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
-                            </svg>
-                            停止扫描
-                        </button>
-                        <div id="scanStatus"
-                            class="flex items-center gap-3 ml-auto bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700">
-                            <span class="relative flex h-3 w-3">
-                                <span
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-3 w-3 bg-slate-500"></span>
-                            </span>
-                            <span class="text-sm font-medium text-slate-600 dark:text-slate-400">未运行</span>
-                        </div>
+            <!-- ====================================================
+                 OPERATIONS PANEL
+                 ==================================================== -->
+            <section class="panel panel--bracketed glass-card card-hover animate-in"
+                style="animation-delay: 60ms;">
+                <i class="brk-tr"></i><i class="brk-bl"></i>
+
+                <div class="panel__head">
+                    <span>// 02 — OPERATIONS</span>
+                    <span class="meta"><span class="live-dot"></span>STATE :: <strong id="opsHeadState">READY</strong></span>
+                </div>
+
+                <div class="flex flex-wrap gap-3 mb-5 items-center">
+                    <button id="btnStart" onclick="handleStartScan()" class="op-btn op-btn--primary glow-button">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+                        <span class="key">[R]</span>RUN SCAN
+                    </button>
+                    <button id="btnPause" onclick="handlePauseScan()"
+                        class="op-btn glow-button opacity-50 cursor-not-allowed" disabled>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6"></path></svg>
+                        <span class="key">[P]</span>PAUSE
+                    </button>
+                    <button id="btnResume" onclick="handleResumeScan()"
+                        class="hidden op-btn glow-button" disabled>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+                        <span class="key">[N]</span>RESUME
+                    </button>
+                    <button id="btnStop" onclick="handleStopScan()"
+                        class="op-btn op-btn--danger glow-button opacity-50 cursor-not-allowed" disabled>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+                        <span class="key">[.]</span>STOP
+                    </button>
+
+                    <div id="currentScanMode" class="hidden">
+                        <span>CHANNEL · </span><span id="scanModeText">-</span>
                     </div>
 
-                    <!-- Progress Bar -->
-                    <div id="progressContainer" class="hidden animate-scale">
-                        <div class="mb-3 flex justify-between items-end">
-                            <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">扫描进度</span>
-                            <span id="progressText"
-                                class="text-lg font-bold text-slate-700 dark:text-slate-200">0%</span>
-                        </div>
-                        <div
-                            class="w-full h-4 bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden mb-3 border border-slate-200 dark:border-slate-700">
-                            <div id="progressBar"
-                                class="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 transition-all duration-500 relative overflow-hidden"
-                                style="width: 0%">
-                                <div
-                                    class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite] transform -skew-x-12">
-                                </div>
-                            </div>
-                        </div>
-                        <div
-                            class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                            <span class="font-semibold text-slate-400">正在搜索:</span>
-                            <span id="currentQuery" class="font-mono text-blue-600 dark:text-blue-400 truncate">-</span>
-                        </div>
+                    <div id="scanStatus" class="ml-auto flex items-center">
+                        <div class="w-3 h-3 bg-slate-400 rounded-full"></div>
+                        <span class="text-sm text-slate-600">未运行</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Logs Panel -->
-            <div class="glass-card card-hover rounded-lg border border-white/50 shadow-lg mb-6">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold text-slate-900">实时日志</h2>
-                        <button onclick="clearLogs()" class="text-sm text-slate-600 hover:text-slate-900">清空</button>
+                <div id="progressContainer" class="hidden animate-scale progress-line">
+                    <div class="progress-line__row">
+                        <span>// scan progress</span>
+                        <span id="progressText">0%</span>
                     </div>
-                    <div id="logsContainer"
-                        class="rounded border border-white/30 bg-white/10 dark:bg-slate-900/30 p-4 h-96 overflow-y-auto font-mono text-xs space-y-1 will-change-scroll">
-                        <div class="text-slate-500">等待日志...</div>
+                    <div class="progress-track">
+                        <div id="progressBar" style="width: 0%;">
+                            <div></div>
+                        </div>
+                    </div>
+                    <div class="progress-current">
+                        <span class="label">probing</span>
+                        <span id="currentQuery">—</span>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Keys Panel -->
-            <div class="glass-card card-hover rounded-xl border border-white/50 shadow-lg animate-in"
-                style="animation-delay: 0.3s;">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                <span class="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
-                                发现的密钥
-                            </h2>
-                            <span
-                                class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2.5 py-0.5 rounded-full font-medium border border-blue-200 dark:border-blue-800"
-                                id="keyCountBadge">0</span>
-                        </div>
-                        <div class="flex gap-3">
-                            <div
-                                class="flex rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
-                                <button onclick="exportKeys()"
-                                    class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border-r border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-colors">
-                                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
-                                    CSV
-                                </button>
-                                <button onclick="exportKeysTxt()"
-                                    class="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
-                                    TXT
-                                </button>
-                            </div>
+            <!-- ====================================================
+                 LIVE FEED
+                 ==================================================== -->
+            <section class="panel panel--bracketed glass-card card-hover">
+                <i class="brk-tr"></i><i class="brk-bl"></i>
 
-                            <button onclick="handleRefreshKeys(this)" id="btnRefresh"
-                                class="px-4 py-2 text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 flex items-center gap-2 shadow-sm group">
-                                <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                    </path>
-                                </svg>
-                                刷新
-                            </button>
+                <div class="panel__head">
+                    <span>// 03 — LIVE FEED · tail -f scan.log</span>
+                    <button onclick="clearLogs()" class="tool-btn">
+                        <span class="key">[K]</span>CLEAR
+                    </button>
+                </div>
 
-                            <button onclick="clearMemory()"
-                                class="px-4 py-2 text-sm bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-500 border border-amber-200 dark:border-amber-900/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-2 transition-colors shadow-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                    </path>
-                                </svg>
-                                清除记忆
-                            </button>
-                        </div>
-                    </div>
-                    <!-- Search and Filter -->
-                    <div class="mb-6 flex gap-4">
-                        <div class="flex-1 relative group">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                            <input type="text" id="keySearch" placeholder="搜索密钥或来源仓库..."
-                                class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 transition-shadow shadow-sm"
-                                oninput="handleKeySearch()" />
-                        </div>
-                        <div class="w-48">
-                            <select id="keyTypeFilter" onchange="handleKeySearch()"
-                                class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 transition-shadow shadow-sm cursor-pointer appearance-none">
-                                <option value="">全部类型</option>
-                                <option value="gemini">Gemini</option>
-                                <option value="openrouter">OpenRouter</option>
-                                <option value="modelscope">ModelScope</option>
-                                <option value="siliconflow">SiliconFlow</option>
-                            </select>
-                        </div>
-                    </div>
+                <div id="logsContainer" class="feed custom-scrollbar will-change-scroll">
+                    <div class="text-slate-500">等待日志...</div>
+                </div>
+            </section>
 
-                    <!-- 批量操作工具栏-->
-                    <div id="batchOperationsBar"
-                        class="mb-6 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl flex flex-wrap gap-1">
-                        <span
-                            class="px-3 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider self-center ml-1">批量复制:</span>
-                        <button onclick="copyKeysByType('all')"
-                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover:scale-125 transition-transform">
-                            </div>
-                            全部
-                        </button>
-                        <button onclick="copyKeysByType('gemini')"
-                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-blue-500 group-hover:scale-125 transition-transform">
-                            </div>
-                            Gemini
-                        </button>
-                        <button onclick="copyKeysByType('openrouter')"
-                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-purple-500 group-hover:scale-125 transition-transform">
-                            </div>
-                            OpenRouter
-                        </button>
-                        <button onclick="copyKeysByType('modelscope')"
-                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform">
-                            </div>
-                            ModelScope
-                        </button>
-                        <button onclick="copyKeysByType('siliconflow')"
-                            class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all shadow-sm flex items-center gap-1.5 group">
-                            <div
-                                class="w-1.5 h-1.5 rounded-full bg-amber-500 group-hover:scale-125 transition-transform">
-                            </div>
-                            SiliconFlow
-                        </button>
-                        <div class="mx-1 w-px bg-slate-300 dark:bg-slate-700 h-5 self-center"></div>
-                        <button onclick="copySelectedKeys()"
-                            class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 ml-auto">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- ====================================================
+                 EXTRACTED ARTIFACTS
+                 ==================================================== -->
+            <section class="panel panel--bracketed glass-card card-hover animate-in"
+                style="animation-delay: 120ms;">
+                <i class="brk-tr"></i><i class="brk-bl"></i>
+
+                <div class="panel__head">
+                    <span>// 04 — EXTRACTED ARTIFACTS · <span id="keyCountBadge">0</span></span>
+                    <div class="flex items-center" style="gap: 8px;">
+                        <button onclick="exportKeys()" class="tool-btn"><span class="key">[E]</span>CSV</button>
+                        <button onclick="exportKeysTxt()" class="tool-btn"><span class="key">[T]</span>TXT</button>
+                        <button onclick="handleRefreshKeys(this)" id="btnRefresh" class="tool-btn">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
-                            复制选中 (<span id="selectedCount">0</span>)
+                            <span class="key">[F]</span>REFRESH
                         </button>
-                    </div>
-
-                    <div
-                        class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-800/30 rounded-xl flex items-start gap-3">
-                        <div class="p-2 bg-blue-100 dark:bg-blue-800/30 rounded-lg">
-                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <div class="text-sm text-blue-900 dark:text-blue-200 pt-0.5">
-                            <p class="font-semibold mb-0.5">扫描记忆功能</p>
-                            <p class="text-blue-800/80 dark:text-blue-300/80 leading-relaxed">
-                                系统会自动记录已扫描的文件和查询哈希，智能避免重复扫描。已处理 <span id="memoryStats"
-                                    class="font-mono font-bold">加载中...</span></p>
-                        </div>
-                    </div>
-                    <div id="keysContainer"
-                        class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <table class="min-w-[1000px] w-full text-sm table-fixed">
-                            <thead
-                                class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                                <tr>
-                                    <th class="w-[40px] px-2 py-3 text-center">
-                                        <input type="checkbox" id="selectAllKeys" onchange="toggleSelectAll(this)"
-                                            class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" />
-                                    </th>
-                                    <th
-                                        class="w-[100px] px-2 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                                        类型</th>
-                                    <th
-                                        class="w-[140px] px-2 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                                        密钥</th>
-                                    <th
-                                        class="w-[50px] px-2 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                                        余额</th>
-                                    <th
-                                        class="w-[280px] px-2 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                                        来源</th>
-                                    <th
-                                        class="w-[150px] px-2 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                                        发现时间</th>
-                                    <th
-                                        class="w-[60px] px-2 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">
-                                        操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="keysTableBody"
-                                class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900/50">
-                                <tr>
-                                    <td colspan="7" class="px-4 py-12 text-center text-slate-500">
-                                        <div class="flex flex-col items-center justify-center gap-3">
-                                            <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                            </svg>
-                                            <p>暂无发现密钥，请开始扫描</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Pagination -->
-                    <div id="paginationContainer"
-                        class="hidden mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <button onclick="clearMemory()" class="tool-btn tool-btn--warn">
+                            <span class="key">[M]</span>CLEAR MEMORY
+                        </button>
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <!-- search row -->
+                <div class="keys-toolbar">
+                    <div class="search-wrap">
+                        <input type="text" id="keySearch" placeholder="search key or source repo…" oninput="handleKeySearch()" />
+                    </div>
+                    <select id="keyTypeFilter" onchange="handleKeySearch()">
+                        <option value="">ALL TYPES</option>
+                        <option value="modelscope">ModelScope</option>
+                        <option value="siliconflow">SiliconFlow</option>
+                        <option value="deepseek">DeepSeek</option>
+                    </select>
+                </div>
+
+                <!-- batch toolbar -->
+                <div id="batchOperationsBar" class="mb-6 flex flex-wrap" style="gap:4px;">
+                    <span>BATCH COPY ::</span>
+                    <button onclick="copyKeysByType('all')">
+                        <div class="w-1.5 h-1.5 rounded-full bg-slate-500"></div>
+                        ALL
+                    </button>
+                    <button onclick="copyKeysByType('modelscope')">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        ModelScope
+                    </button>
+                    <button onclick="copyKeysByType('siliconflow')">
+                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                        SiliconFlow
+                    </button>
+                    <button onclick="copyKeysByType('deepseek')">
+                        <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                        DeepSeek
+                    </button>
+                    <button onclick="copySelectedKeys()" class="bg-blue-600 text-white">
+                        COPY SELECTED (<span id="selectedCount">0</span>)
+                    </button>
+                </div>
+
+                <!-- memory banner -->
+                <div class="memory-banner">
+                    <div>
+                        <span class="label">// scan memory</span>
+                        <span>系统会自动记录已扫描的文件和查询哈希，智能避免重复扫描。</span>
+                        <span>已处理 · <span id="memoryStats">加载中...</span></span>
+                    </div>
+                </div>
+
+                <!-- table -->
+                <div id="keysContainer" class="overflow-x-auto">
+                    <table class="min-w-[1000px] w-full text-sm table-fixed">
+                        <thead>
+                            <tr>
+                                <th class="w-[40px] px-2 py-3 text-center">
+                                    <input type="checkbox" id="selectAllKeys" onchange="toggleSelectAll(this)" />
+                                </th>
+                                <th class="w-[100px]">TYPE</th>
+                                <th class="w-[140px]">KEY</th>
+                                <th class="w-[60px]">BAL</th>
+                                <th class="w-[280px]">SOURCE</th>
+                                <th class="w-[150px]">FOUND AT</th>
+                                <th class="w-[60px] text-center">·</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keysTableBody">
+                            <tr>
+                                <td colspan="7">no artifacts yet · run a scan</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="paginationContainer" class="hidden mt-6 pt-4" style="border-top:1px solid var(--border-subtle);"></div>
+            </section>
+
+        </main>
     </div>
 
-    <!-- Toast Container -->
+    <!-- Toast container -->
     <div id="toastContainer" class="fixed top-5 right-5 z-[9999] flex flex-col items-end gap-3"></div>
 
-    <!-- Reports Modal -->
+    <!-- ============================================================
+         REPORTS MODAL
+         ============================================================ -->
     <div id="reportsModal"
         class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
         <div class="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto my-8">
             <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between">
                 <div>
-                    <h3 class="text-2xl font-semibold text-slate-900">扫描历史报告</h3>
-                    <p class="text-sm text-slate-600 mt-1">查看历史扫描记录和统计数据</p>
+                    <h3 class="text-2xl font-semibold text-slate-900">SCAN REPORTS</h3>
+                    <p class="text-sm text-slate-600 mt-1">history · stats archive</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="loadReports()"
-                        class="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                            </path>
-                        </svg>
-                        刷新
-                    </button>
-                    <button onclick="hideReportsDialog()" class="text-slate-400 hover:text-slate-600 transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+                    <button onclick="loadReports()" class="tool-btn"><span class="key">[F]</span>REFRESH</button>
+                    <button onclick="hideReportsDialog()" class="tool-btn">CLOSE</button>
                 </div>
             </div>
-
             <div class="p-6" id="reportsContent">
-                <div class="text-center text-slate-500 py-8">加载中...</div>
+                <div class="text-center text-slate-500 py-8">loading…</div>
             </div>
         </div>
     </div>
 
-    <!-- Config Modal -->
+    <!-- ============================================================
+         CONFIG MODAL
+         ============================================================ -->
     <div id="configModal"
         class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
         <div class="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto my-8">
             <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between">
                 <div>
-                    <h3 class="text-2xl font-semibold text-slate-900">扫描配置</h3>
-                    <p class="text-sm text-slate-600 mt-1">配置GitHub Token和扫描参数</p>
+                    <h3 class="text-2xl font-semibold text-slate-900">SCAN CONFIG</h3>
+                    <p class="text-sm text-slate-600 mt-1">github tokens · channel validators · perf tuning</p>
                 </div>
-                <button onclick="hideConfigDialog()" class="text-slate-400 hover:text-slate-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
+                <button onclick="hideConfigDialog()" class="tool-btn">CLOSE</button>
             </div>
-
-            <div class="p-6" id="configModalContent">
-                <!-- Config form will be moved here -->
-            </div>
+            <div class="p-6" id="configModalContent"></div>
         </div>
     </div>
 
-    <!-- Change Password Modal -->
+    <!-- ============================================================
+         CHANGE PASSWORD MODAL
+         ============================================================ -->
     <div id="changePasswordModal"
         class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-xl font-semibold text-slate-900 mb-4">修改密码</h3>
+            <h3 class="text-xl font-semibold text-slate-900 mb-4">CHANGE PASSPHRASE</h3>
             <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">当前密码</label>
-                    <input type="password" id="oldPassword" required
-                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <label class="field-label">Current passphrase</label>
+                    <input type="password" id="oldPassword" required />
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">新密码</label>
-                    <input type="password" id="newPassword" required minlength="6"
-                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                    <p class="text-xs text-slate-500 mt-1">至少6位字符</p>
+                    <label class="field-label">New passphrase</label>
+                    <input type="password" id="newPassword" required minlength="6" />
+                    <p class="help-text">≥ 6 chars</p>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">确认新密码</label>
-                    <input type="password" id="confirmPassword" required minlength="6"
-                        class="w-full px-4 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <label class="field-label">Confirm new passphrase</label>
+                    <input type="password" id="confirmPassword" required minlength="6" />
                 </div>
-                <div class="flex gap-3">
-                    <button type="submit"
-                        class="flex-1 px-4 py-2.5 bg-primary text-white rounded-md hover:bg-primary/90">
-                        确认修改
-                    </button>
-                    <button type="button" onclick="hideChangePasswordDialog()"
-                        class="flex-1 px-4 py-2.5 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300">
-                        取消
-                    </button>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1">CONFIRM</button>
+                    <button type="button" onclick="hideChangePasswordDialog()" class="flex-1">CANCEL</button>
                 </div>
             </form>
         </div>

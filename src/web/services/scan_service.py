@@ -2,43 +2,54 @@
 Scan service.
 """
 
-import os
+import threading
 from datetime import datetime
-from threading import Thread
+from threading import Thread, Event, Lock
 from typing import Dict
 
 log_service = None
 config_service = None
+_service_lock = Lock()
 
 
 def get_log_service():
-    """Get log service instance."""
+    """Get log service instance (thread-safe lazy init)."""
     global log_service
     if log_service is None:
-        from .log_service import LogService
-        log_service = LogService()
+        with _service_lock:
+            if log_service is None:
+                from .log_service import LogService
+                log_service = LogService()
     return log_service
 
 
 def get_config_service():
-    """Get config service instance."""
+    """Get config service instance (thread-safe lazy init)."""
     global config_service
     if config_service is None:
-        from .config_service import ConfigService
-        config_service = ConfigService()
+        with _service_lock:
+            if config_service is None:
+                from .config_service import ConfigService
+                config_service = ConfigService()
     return config_service
 
 
 class ScanService:
-    """Scan management service."""
-    
+    """Scan management service.
+
+    Lifecycle:
+      - _stop_event is SET when the user asks to stop; runners poll
+        ``is_set()`` and use ``wait(timeout)`` for interruptible sleeps.
+      - _paused is a plain bool; the runner polls it in short intervals.
+    """
+
     def __init__(self):
         self._running = False
         self._paused = False
         self._scanner_thread = None
-        self._stop_flag = False
-        self._current_scan_mode = None  # 当前扫描使用的模式
-        self._scan_start_time = None  # 扫描开始时间
+        self._stop_event: Event = Event()
+        self._current_scan_mode = None
+        self._scan_start_time = None
         self._stats = {
             "total_files": 0,
             "total_keys": 0,
@@ -50,28 +61,32 @@ class ScanService:
             "progress_percent": 0,
             "queries_completed": 0,
             "initial_unprocessed_queries": 0,
-            "remaining_queries": 0
+            "remaining_queries": 0,
         }
-    
+
+    # ------------------------------------------------------------------
+    # Public lifecycle
+    # ------------------------------------------------------------------
+
     def start_scan(self) -> Dict:
         """Start scanning."""
         if self._running:
             raise Exception("Scanner is already running")
-        
+
         cfg_service = get_config_service()
         log_svc = get_log_service()
-        
+
         config = cfg_service.get_config()
         if not config:
             raise Exception("Please configure GitHub tokens first")
-        
-        # Start scanner in background thread
-        self._stop_flag = False
+
+        # Reset event on each run
+        self._stop_event = Event()
         self._running = True
-        self._current_scan_mode = config.get("scan_mode", "compatible")  # 记录当前扫描模式
+        self._paused = False
+        self._current_scan_mode = config.get("scan_mode", "compatible")
         self._scan_start_time = datetime.now()
-        
-        # 重置统计
+
         self._stats = {
             "total_files": 0,
             "total_keys": 0,
@@ -83,70 +98,73 @@ class ScanService:
             "progress_percent": 0,
             "queries_completed": 0,
             "initial_unprocessed_queries": 0,
-            "remaining_queries": 0
+            "remaining_queries": 0,
         }
-        
+
         from ..core.scanner_runner import ScannerRunner
         runner = ScannerRunner(config, self._stats, log_svc, self)
-        self._scanner_thread = Thread(target=runner.run, args=(lambda: self._stop_flag,), daemon=True)
+        # Preserve legacy callable signature — runners can also grab the Event
+        # directly via ``scan_service._stop_event`` for ``wait(timeout)`` loops.
+        self._scanner_thread = Thread(
+            target=runner.run,
+            args=(self._stop_event.is_set,),
+            daemon=True,
+        )
         self._scanner_thread.start()
-        
-        # 清除配置缓存，确保下次启动使用最新配置
+
         cfg_service.clear_cache()
-        
+
         log_svc.add_log("success", f"Scanner started with mode: {self._current_scan_mode}")
-        
+
         return {"status": "ok", "message": "Scanner started"}
-    
+
     def stop_scan(self) -> Dict:
-        """Stop scanning."""
+        """Signal the running scanner to stop."""
         if not self._running:
             raise Exception("Scanner is not running")
 
-        self._stop_flag = True
-        self._running = False  # 立即标记为未运行状态
+        self._stop_event.set()
+        self._running = False  # surface the stop state to the UI immediately
         log_svc = get_log_service()
         log_svc.add_log("warning", "Stop signal sent, waiting for scanner to finish current task...")
 
         return {"status": "ok", "message": "Stop signal sent"}
-    
+
     def pause_scan(self) -> Dict:
         """Pause scanning."""
         if not self._running:
             raise Exception("Scanner is not running")
-        
         if self._paused:
             raise Exception("Scanner is already paused")
-        
+
         self._paused = True
-        log_svc = get_log_service()
-        log_svc.add_log("warning", "Scanner paused")
-        
+        get_log_service().add_log("warning", "Scanner paused")
         return {"status": "ok", "message": "Scanner paused"}
-    
+
     def resume_scan(self) -> Dict:
         """Resume scanning."""
         if not self._running:
             raise Exception("Scanner is not running")
-        
         if not self._paused:
             raise Exception("Scanner is not paused")
-        
+
         self._paused = False
-        log_svc = get_log_service()
-        log_svc.add_log("success", "Scanner resumed")
-        
+        get_log_service().add_log("success", "Scanner resumed")
         return {"status": "ok", "message": "Scanner resumed"}
-    
+
     def get_status(self) -> Dict:
         """Get scanner status."""
         return {
             "running": self._running,
             "paused": self._paused,
-            "scan_mode": self._current_scan_mode,  # 添加当前扫描模式
-            "stats": self._stats
+            "scan_mode": self._current_scan_mode,
+            "stats": self._stats,
         }
-    
+
+    # ------------------------------------------------------------------
+    # Runner callbacks
+    # ------------------------------------------------------------------
+
     def set_running(self, running: bool):
         """Set running status (called by runner)."""
         self._running = running
@@ -158,14 +176,12 @@ class ScanService:
         self._handle_scan_finished(completed)
 
     def _handle_scan_finished(self, completed: bool):
-        """Handle cleanup and optional report creation when scan stops."""
-        # 只要是正常完成的扫描且有扫描模式，就生成报告
+        """Cleanup + optional report creation when scan stops."""
         if completed and self._current_scan_mode:
-            # 只要处理过查询或扫描过文件，就生成报告
             has_activity = (
-                self._stats.get("total_files", 0) > 0 or
-                self._stats.get("queries_completed", 0) > 0 or
-                self._stats.get("valid_keys", 0) > 0
+                self._stats.get("total_files", 0) > 0
+                or self._stats.get("queries_completed", 0) > 0
+                or self._stats.get("valid_keys", 0) > 0
             )
 
             if has_activity:
@@ -179,40 +195,43 @@ class ScanService:
                         self._stats,
                         self._current_scan_mode,
                         start_time,
-                        end_time
+                        end_time,
                     )
                     log_svc = get_log_service()
                     log_svc.add_log("success", f"Scan report created: #{report.get('id')}", {
                         "total_files": self._stats.get("total_files", 0),
                         "valid_keys": self._stats.get("valid_keys", 0),
-                        "duration": f"{int((end_time - start_time).total_seconds())}s"
+                        "duration": f"{int((end_time - start_time).total_seconds())}s",
                     })
                 except Exception as e:
-                    log_svc = get_log_service()
-                    log_svc.add_log("error", f"Failed to create report: {str(e)}")
+                    get_log_service().add_log("error", f"Failed to create report: {str(e)}")
 
-        if not completed:
-            # 如果扫描被终止，保留已统计信息供下一次恢复
-            pass
-
-        # 重置运行状态，确保前端展示停止
+        # Reset runtime state
         self._running = False
         self._paused = False
-        self._stop_flag = False
+        self._stop_event.set()  # idempotent; ensures waiters exit
 
-        # 将进度标记为完成
         if completed and self._stats.get("total_queries"):
             self._stats["progress_percent"] = 100
             self._stats["current_query"] = ""
 
-        # 重置运行状态
         self._current_scan_mode = None
         self._scan_start_time = None
-    
+
+    # ------------------------------------------------------------------
+    # Helpers exposed to the runner
+    # ------------------------------------------------------------------
+
     def is_paused(self) -> bool:
         """Check if scanner is paused."""
         return self._paused
-    
+
+    def wait_or_stop(self, timeout: float) -> bool:
+        """Sleep up to ``timeout`` seconds; return True if stop was requested
+        during the wait. Callers should ``break`` on True.
+        """
+        return self._stop_event.wait(timeout)
+
     def update_progress(self, current_query_index: int, total_queries: int, current_query: str):
         """Update scan progress."""
         self._stats["current_query_index"] = current_query_index

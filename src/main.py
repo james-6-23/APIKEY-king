@@ -10,8 +10,8 @@ from typing import Dict, Any, List
 
 from .core import ScanMode, APIKeyScanner
 from .services import ConfigService, GitHubService, FileService
-from .extractors import GeminiExtractor, ModelScopeExtractor, OpenRouterExtractor
-from .validators import GeminiValidator, OpenRouterValidator, ModelScopeValidator
+from .extractors import ModelScopeExtractor
+from .validators import ModelScopeValidator
 from .models import Checkpoint, ScanResult, BatchScanResult
 from .utils import logger
 
@@ -76,27 +76,7 @@ class Application:
     
     def _apply_scan_mode_config(self) -> None:
         """Apply scan mode specific configuration overrides."""
-        if self.scan_mode == ScanMode.OPENROUTER_ONLY:
-            # Enable only OpenRouter extractor
-            for name, extractor_config in self.config.extractors.items():
-                if name == 'openrouter':
-                    extractor_config.enabled = True
-                    extractor_config.extract_only = False  # Enable validation for OpenRouter
-                else:
-                    extractor_config.enabled = False
-            
-            # Enable only OpenRouter validator
-            for name, validator_config in self.config.validators.items():
-                if name == 'openrouter':
-                    validator_config.enabled = True
-                else:
-                    validator_config.enabled = False
-            
-            # Use OpenRouter queries
-            self.config.scan.queries_file = "config/queries/openrouter.txt"
-            logger.mode_activated("OpenRouter", True)
-            
-        elif self.scan_mode == ScanMode.MODELSCOPE_ONLY:
+        if self.scan_mode == ScanMode.MODELSCOPE_ONLY:
             # Enable only ModelScope extractor
             for name, extractor_config in self.config.extractors.items():
                 if name == 'modelscope':
@@ -104,37 +84,17 @@ class Application:
                     extractor_config.extract_only = False  # Enable validation for ModelScope
                 else:
                     extractor_config.enabled = False
-            
+
             # Enable only ModelScope validator
             for name, validator_config in self.config.validators.items():
                 if name == 'modelscope':
                     validator_config.enabled = True
                 else:
                     validator_config.enabled = False
-            
+
             # Use ModelScope queries
             self.config.scan.queries_file = "config/queries/modelscope.txt"
             logger.mode_activated("ModelScope", True)
-            
-        elif self.scan_mode == ScanMode.GEMINI_ONLY:
-            # Enable only Gemini extractor
-            for name, extractor_config in self.config.extractors.items():
-                if name == 'gemini':
-                    extractor_config.enabled = True
-                    extractor_config.extract_only = False  # Enable validation
-                else:
-                    extractor_config.enabled = False
-            
-            # Enable only Gemini validator
-            for name, validator_config in self.config.validators.items():
-                if name == 'gemini':
-                    validator_config.enabled = True
-                else:
-                    validator_config.enabled = False
-            
-            # Use Gemini queries
-            self.config.scan.queries_file = "config/queries/gemini.txt"
-            logger.mode_activated("Gemini", True)
 
         elif self.scan_mode == ScanMode.SILICONFLOW_ONLY:
             # Enable only SiliconFlow extractor
@@ -156,16 +116,36 @@ class Application:
             self.config.scan.queries_file = "config/queries/siliconflow.txt"
             logger.mode_activated("SiliconFlow", True)
 
+        elif self.scan_mode == ScanMode.DEEPSEEK_ONLY:
+            # Enable only DeepSeek extractor
+            for name, extractor_config in self.config.extractors.items():
+                if name == 'deepseek':
+                    extractor_config.enabled = True
+                    extractor_config.extract_only = False
+                else:
+                    extractor_config.enabled = False
+
+            # Enable only DeepSeek validator
+            for name, validator_config in self.config.validators.items():
+                if name == 'deepseek':
+                    validator_config.enabled = True
+                else:
+                    validator_config.enabled = False
+
+            # Use DeepSeek queries
+            self.config.scan.queries_file = "config/queries/deepseek.txt"
+            logger.mode_activated("DeepSeek", True)
+
         elif self.scan_mode == ScanMode.COMPATIBLE:
             # Enable all extractors with validation where supported
             for name, extractor_config in self.config.extractors.items():
-                if name in ['gemini', 'openrouter', 'modelscope', 'siliconflow']:
-                    extractor_config.extract_only = False  # Enable validation for all
-            
+                if name in ['modelscope', 'siliconflow', 'deepseek']:
+                    extractor_config.extract_only = False
+
             # Enable all validators
             for name, validator_config in self.config.validators.items():
                 validator_config.enabled = True
-                
+
             logger.mode_activated("兼容 Compatible", True)
     
     def _create_extractors(self) -> List:
@@ -176,44 +156,35 @@ class Application:
         
         for name, config in enabled_extractors.items():
             try:
-                if name == 'gemini':
-                    extractor = GeminiExtractor(config)
-                elif name == 'modelscope':
+                if name == 'modelscope':
                     extractor = ModelScopeExtractor(config)
-                elif name == 'openrouter':
-                    extractor = OpenRouterExtractor(config)
                 elif name == 'siliconflow':
                     from .extractors.siliconflow import SiliconFlowExtractor
                     extractor = SiliconFlowExtractor(config)
+                elif name == 'deepseek':
+                    from .extractors.deepseek import DeepSeekExtractor
+                    extractor = DeepSeekExtractor(config)
                 else:
                     logger.warning(f"Unknown extractor type: {name}")
                     continue
-                
+
                 extractors.append(extractor)
                 logger.init_success(f"{name} 提取器 extractor")
-                
+
             except Exception as e:
                 logger.error(f"Failed to create {name} extractor: {e}")
-        
+
         return extractors
-    
+
     def _create_validators(self) -> List:
         """Create validator instances based on configuration."""
         validators = []
-        
+
         enabled_validators = self.config.get_enabled_validators()
-        
+
         for name, config in enabled_validators.items():
             try:
-                if name == 'gemini':
-                    validator = GeminiValidator(config)
-                    validators.append(validator)
-                    logger.init_success(f"{name} 验证器 validator")
-                elif name == 'openrouter':
-                    validator = OpenRouterValidator(config)
-                    validators.append(validator)
-                    logger.init_success(f"{name} 验证器 validator")
-                elif name == 'modelscope':
+                if name == 'modelscope':
                     validator = ModelScopeValidator(config)
                     validators.append(validator)
                     logger.init_success(f"{name} 验证器 validator")
@@ -222,12 +193,17 @@ class Application:
                     validator = SiliconFlowValidator(config)
                     validators.append(validator)
                     logger.init_success(f"{name} 验证器 validator")
+                elif name == 'deepseek':
+                    from .validators.deepseek import DeepSeekValidator
+                    validator = DeepSeekValidator(config)
+                    validators.append(validator)
+                    logger.init_success(f"{name} 验证器 validator")
                 else:
                     logger.warning(f"Unknown validator type: {name}")
-            
+
             except Exception as e:
                 logger.error(f"Failed to create {name} validator: {e}")
-        
+
         return validators
     
     def run(self) -> None:
@@ -462,12 +438,11 @@ class Application:
 
     def _determine_key_type(self, key: str) -> str:
         """Determine key type from key format."""
-        if key.startswith('AIzaSy'):
-            return 'gemini'
-        elif key.startswith('sk-or-v1-'):
-            return 'openrouter'
-        elif key.startswith('ms-'):
+        import re
+        if key.startswith('ms-'):
             return 'modelscope'
+        elif re.match(r'^sk-[a-f0-9]{32}$', key, re.IGNORECASE):
+            return 'deepseek'
         elif key.startswith('sk-'):
             return 'siliconflow'
         else:
@@ -540,9 +515,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="APIKEY-king - API Key Discovery Tool")
     parser.add_argument(
         "--mode",
-        choices=["modelscope-only", "openrouter-only", "gemini-only", "siliconflow-only", "compatible"],
+        choices=["modelscope-only", "siliconflow-only", "deepseek-only", "compatible"],
         default="compatible",
-        help="Scanning mode: modelscope-only, openrouter-only, gemini-only, siliconflow-only, or compatible (all types)"
+        help="Scanning mode: modelscope-only, siliconflow-only, deepseek-only, or compatible (all types)"
     )
     parser.add_argument(
         "--config-preset",

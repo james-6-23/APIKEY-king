@@ -123,15 +123,6 @@ class ConfigService:
     def _load_validator_configs(self) -> Dict[str, ValidatorConfig]:
         """Load validator configurations."""
         validators = {}
-        
-        # Create default Gemini validator
-        validators['gemini'] = ValidatorConfig(
-            name='gemini',
-            enabled=self._parse_bool(os.getenv('GEMINI_VALIDATION_ENABLED', 'true')),
-            api_endpoint='generativelanguage.googleapis.com',
-            model_name=os.getenv('HAJIMI_CHECK_MODEL', 'gemini-2.5-flash'),
-            timeout=float(os.getenv('GEMINI_TIMEOUT', '30.0'))
-        )
 
         # Create default SiliconFlow validator
         validators['siliconflow'] = ValidatorConfig(
@@ -141,15 +132,6 @@ class ConfigService:
             model_name=os.getenv('SILICONFLOW_TEST_MODEL', 'Qwen/Qwen2.5-72B-Instruct'),
             timeout=float(os.getenv('SILICONFLOW_TIMEOUT', '30.0'))
         )
-        
-        # Create default OpenRouter validator
-        validators['openrouter'] = ValidatorConfig(
-            name='openrouter',
-            enabled=self._parse_bool(os.getenv('OPENROUTER_VALIDATION_ENABLED', 'true')),
-            api_endpoint='https://openrouter.ai/api/v1/chat/completions',
-            model_name=os.getenv('OPENROUTER_TEST_MODEL', 'deepseek/deepseek-chat-v3.1:free'),
-            timeout=float(os.getenv('OPENROUTER_TIMEOUT', '30.0'))
-        )
 
         # Create default ModelScope validator
         validators['modelscope'] = ValidatorConfig(
@@ -158,6 +140,16 @@ class ConfigService:
             api_endpoint='https://api-inference.modelscope.cn/v1/chat/completions',
             model_name=os.getenv('MODELSCOPE_TEST_MODEL', 'Qwen/Qwen2-1.5B-Instruct'),
             timeout=float(os.getenv('MODELSCOPE_TIMEOUT', '30.0'))
+        )
+
+        # Create default DeepSeek validator — no chat model needed; it validates
+        # via the lightweight /user/balance endpoint which also returns balance.
+        validators['deepseek'] = ValidatorConfig(
+            name='deepseek',
+            enabled=self._parse_bool(os.getenv('DEEPSEEK_VALIDATION_ENABLED', 'true')),
+            api_endpoint='https://api.deepseek.com/user/balance',
+            model_name=None,
+            timeout=float(os.getenv('DEEPSEEK_TIMEOUT', '30.0'))
         )
 
         return validators
@@ -176,19 +168,6 @@ class ConfigService:
                 extractors['modelscope'].require_key_context = self._parse_bool(os.getenv('MS_REQUIRE_KEY_CONTEXT'))
             if os.getenv('MODELSCOPE_EXTRACT_ONLY'):
                 extractors['modelscope'].extract_only = self._parse_bool(os.getenv('MODELSCOPE_EXTRACT_ONLY'))
-        
-        # OpenRouter extractor overrides
-        if 'openrouter' in extractors:
-            if os.getenv('OPENROUTER_BASE_URLS'):
-                extractors['openrouter'].base_urls = self._parse_list(os.getenv('OPENROUTER_BASE_URLS'))
-            if os.getenv('OPENROUTER_USE_LOOSE_PATTERN'):
-                extractors['openrouter'].use_loose_pattern = self._parse_bool(os.getenv('OPENROUTER_USE_LOOSE_PATTERN'))
-            if os.getenv('OPENROUTER_PROXIMITY_CHARS'):
-                extractors['openrouter'].proximity_chars = int(os.getenv('OPENROUTER_PROXIMITY_CHARS', '0'))
-            if os.getenv('OPENROUTER_REQUIRE_KEY_CONTEXT'):
-                extractors['openrouter'].require_key_context = self._parse_bool(os.getenv('OPENROUTER_REQUIRE_KEY_CONTEXT'))
-            if os.getenv('OPENROUTER_EXTRACT_ONLY'):
-                extractors['openrouter'].extract_only = self._parse_bool(os.getenv('OPENROUTER_EXTRACT_ONLY'))
 
         # SiliconFlow extractor overrides
         if 'siliconflow' in extractors:

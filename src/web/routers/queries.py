@@ -27,7 +27,7 @@ async def get_queries(
     """
     Get search queries for the specified mode.
     
-    - **mode**: Query file mode (default, gemini, openrouter, modelscope, siliconflow)
+    - **mode**: Query file mode (default, modelscope, siliconflow, deepseek)
     """
     try:
         query_file = f"config/queries/{mode}.txt"

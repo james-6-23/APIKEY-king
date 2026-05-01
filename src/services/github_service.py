@@ -275,5 +275,5 @@ class GitHubService:
             return content_response.text
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ Failed to fetch file content: {type(e).__name__}")
+            self.log_callback(f"❌ Failed to fetch file content: {type(e).__name__}")
             return None
