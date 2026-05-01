@@ -56,7 +56,7 @@ export function LiveLogsCard() {
         </Badge>
       </CardHeader>
       <CardContent className="flex-1 p-0">
-        <ScrollArea className="h-[380px] border-t">
+        <ScrollArea className="h-[500px] border-t">
           <div className="divide-y divide-border/50 px-4 py-2 font-mono text-xs">
             {logs.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">

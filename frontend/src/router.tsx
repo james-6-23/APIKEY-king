@@ -5,6 +5,7 @@ import { LoginPage } from "@/components/auth/login-page";
 import { DashboardPage } from "@/pages/dashboard-page";
 import { ReportsPage } from "@/pages/reports-page";
 import { ConfigPage } from "@/pages/config-page";
+import { KeysPage } from "@/pages/keys-page";
 import { useAuth } from "@/hooks/useAuth";
 
 function Guard({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
     element: <ProtectedLayout />,
     children: [
       { path: "/", element: <DashboardPage /> },
+      { path: "/keys", element: <KeysPage /> },
       { path: "/reports", element: <ReportsPage /> },
       { path: "/config", element: <ConfigPage /> },
     ],

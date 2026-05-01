@@ -37,6 +37,7 @@ export function TopBar() {
 
         <nav className="ml-4 hidden items-center gap-1 md:flex">
           <NavItem to="/" label={t("nav.dashboard")} end />
+          <NavItem to="/keys" label={t("nav.keys")} />
           <NavItem to="/reports" label={t("nav.reports")} />
           <NavItem to="/config" label={t("nav.config")} />
         </nav>
@@ -77,8 +78,9 @@ export function TopBar() {
 
       {/* Mobile nav */}
       <div className="border-t md:hidden">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-1 px-4 py-2">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-1 overflow-x-auto px-4 py-2">
           <NavItem to="/" label={t("nav.dashboard")} end />
+          <NavItem to="/keys" label={t("nav.keys")} />
           <NavItem to="/reports" label={t("nav.reports")} />
           <NavItem to="/config" label={t("nav.config")} />
         </div>
