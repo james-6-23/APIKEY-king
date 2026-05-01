@@ -78,6 +78,19 @@ class LogService:
         with self._logs_lock:
             self._logs = []
 
+        # Tell connected clients so their local buffers also drop.
+        with self._ws_lock:
+            has_connections = bool(self._websocket_connections)
+
+        if LogService._main_loop and has_connections:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    self._broadcast_message({"event": "cleared", "data": None}),
+                    LogService._main_loop,
+                )
+            except Exception:
+                pass
+
     def add_websocket(self, websocket):
         """Add websocket connection."""
         with self._ws_lock:

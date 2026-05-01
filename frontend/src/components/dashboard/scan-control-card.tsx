@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Pause, Play, Square, StopCircle } from "lucide-react";
+import { Loader2, Pause, Play, RotateCcw, Square, StopCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,6 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { RadialProgress } from "@/components/ui/radial-progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import type {
@@ -30,10 +38,13 @@ interface Props {
 
 const VALIDATOR_ORDER: KeyType[] = ["modelscope", "siliconflow", "deepseek"];
 
+type PendingAction = ScanAction | "restart" | null;
+
 export function ScanControlCard({ status, config }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
-  const [pending, setPending] = useState<ScanAction | null>(null);
+  const [pending, setPending] = useState<PendingAction>(null);
+  const [restartOpen, setRestartOpen] = useState(false);
 
   const running = status?.running ?? false;
   const paused = status?.paused ?? false;
@@ -55,6 +66,20 @@ export function ScanControlCard({ status, config }: Props) {
           ? t("dashboard.scanControl.configMissing")
           : detail;
       toast.error(t("dashboard.scanControl.actionFailed"), message);
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const doRestart = async () => {
+    setPending("restart");
+    setRestartOpen(false);
+    try {
+      await api.post("/api/scan/restart");
+      toast.success(t("dashboard.scanControl.restartSuccess"));
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.detail ?? err.message : (err as Error).message;
+      toast.error(t("dashboard.scanControl.actionFailed"), detail);
     } finally {
       setPending(null);
     }
@@ -153,6 +178,19 @@ export function ScanControlCard({ status, config }: Props) {
                   {t("dashboard.scanControl.stateStopped")}
                 </Button>
               ) : null}
+              <Button
+                variant="outline"
+                onClick={() => setRestartOpen(true)}
+                disabled={pending !== null}
+                title={t("dashboard.scanControl.restartHint")}
+              >
+                {pending === "restart" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw />
+                )}
+                {t("dashboard.scanControl.restart")}
+              </Button>
             </div>
 
             <div className="space-y-2">
@@ -204,6 +242,25 @@ export function ScanControlCard({ status, config }: Props) {
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={restartOpen} onOpenChange={setRestartOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("dashboard.scanControl.restartConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("dashboard.scanControl.restartConfirmDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRestartOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={doRestart}>
+              <RotateCcw /> {t("dashboard.scanControl.restartConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

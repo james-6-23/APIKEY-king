@@ -84,6 +84,12 @@
       "pause": "Pause",
       "resume": "Resume",
       "stop": "Stop",
+      "restart": "Restart",
+      "restartHint": "Stop the running scan, wipe scan memory (processed queries and file SHAs), then start fresh.",
+      "restartConfirmTitle": "Restart scan task?",
+      "restartConfirmDescription": "This will stop the running scan, wipe scan memory (processed queries and file SHAs), and start again. Discovered keys are kept.",
+      "restartConfirm": "Stop & restart",
+      "restartSuccess": "Memory cleared and scan restarted",
       "progress": "Progress",
       "progressDetail": "{{done}} / {{total}} queries",
       "currentQuery": "Current query",
@@ -101,7 +107,9 @@
       "description": "Real-time event stream from the scanner",
       "empty": "No logs yet",
       "connected": "Connected",
-      "disconnected": "Disconnected, retrying…"
+      "disconnected": "Disconnected, retrying…",
+      "clear": "Clear logs",
+      "cleared": "Logs cleared"
     },
     "keys": {
       "title": "Discovered keys",

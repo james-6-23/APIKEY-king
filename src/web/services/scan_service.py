@@ -152,6 +152,36 @@ class ScanService:
         get_log_service().add_log("success", "Scanner resumed")
         return {"status": "ok", "message": "Scanner resumed"}
 
+    def restart_scan(self, wipe_memory: bool = True) -> Dict:
+        """Stop (if running), optionally wipe scan memory, then start fresh.
+
+        The "wipe memory" step clears processed-query and scanned-SHA state
+        from the database so the new run rescans everything, which is what
+        users expect when they hit "重新开始".
+        """
+        log_svc = get_log_service()
+
+        # 1. Stop current scan if alive and wait for the runner thread to exit.
+        if self._running:
+            self._stop_event.set()
+            self._running = False
+            log_svc.add_log("warning", "Restart requested: waiting for scanner to stop...")
+            thread = self._scanner_thread
+            if thread is not None and thread.is_alive():
+                thread.join(timeout=15.0)
+                if thread.is_alive():
+                    raise Exception("Scanner did not stop within timeout")
+
+        # 2. Wipe memory so the next run re-processes everything.
+        if wipe_memory:
+            from ..database.database import db
+            db.clear_scan_memory()
+            log_svc.add_log("warning", "Scan memory cleared (processed queries & scanned SHAs)")
+
+        # 3. Start a new scan using the current config.
+        result = self.start_scan()
+        return {"status": "ok", "message": "Scanner restarted", **result}
+
     def get_status(self) -> Dict:
         """Get scanner status."""
         return {

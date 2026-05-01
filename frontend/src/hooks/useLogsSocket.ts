@@ -26,6 +26,9 @@ export function useLogsSocket() {
           if (next.length > MAX_LOGS) next.splice(0, next.length - MAX_LOGS);
           return { ...prev, logs: next, connected: true };
         }
+        if (event.event === "cleared") {
+          return { ...prev, logs: [] };
+        }
         return prev;
       });
     });

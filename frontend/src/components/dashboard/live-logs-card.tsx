@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, WifiOff } from "lucide-react";
+import { Activity, Eraser, WifiOff } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,8 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLogsSocket } from "@/hooks/useLogsSocket";
+import { useToast } from "@/hooks/useToast";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import type { LogEntry, LogLevel } from "@/lib/ws";
 
@@ -32,12 +35,23 @@ function formatTs(iso: string) {
 
 export function LiveLogsCard() {
   const { t } = useTranslation();
+  const toast = useToast();
   const { logs, connected } = useLogsSocket();
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [logs.length]);
+
+  const handleClear = async () => {
+    try {
+      await api.delete("/api/logs");
+      // WS broadcast will drop client-side logs too.
+      toast.success(t("dashboard.logs.cleared"));
+    } catch (err) {
+      toast.error(t("common.error"), (err as Error).message);
+    }
+  };
 
   return (
     <Card className="flex flex-col">
@@ -46,14 +60,24 @@ export function LiveLogsCard() {
           <CardTitle>{t("dashboard.logs.title")}</CardTitle>
           <CardDescription>{t("dashboard.logs.description")}</CardDescription>
         </div>
-        <Badge variant={connected ? "success" : "secondary"} className="gap-1.5">
-          {connected ? (
-            <Activity className="h-3 w-3 animate-pulse" />
-          ) : (
-            <WifiOff className="h-3 w-3" />
-          )}
-          {connected ? t("dashboard.logs.connected") : t("dashboard.logs.disconnected")}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={connected ? "success" : "secondary"} className="gap-1.5">
+            {connected ? (
+              <Activity className="h-3 w-3 animate-pulse" />
+            ) : (
+              <WifiOff className="h-3 w-3" />
+            )}
+            {connected ? t("dashboard.logs.connected") : t("dashboard.logs.disconnected")}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            disabled={logs.length === 0}
+          >
+            <Eraser /> {t("dashboard.logs.clear")}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 p-0">
         <ScrollArea className="h-[500px] border-t">

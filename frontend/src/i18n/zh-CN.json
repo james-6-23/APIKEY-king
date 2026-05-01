@@ -84,6 +84,12 @@
       "pause": "暂停",
       "resume": "继续",
       "stop": "停止",
+      "restart": "重新开始",
+      "restartHint": "停止当前任务、清空扫描记忆（已处理查询与 SHA），然后重新启动。",
+      "restartConfirmTitle": "重新开始扫描任务？",
+      "restartConfirmDescription": "该操作会停止当前任务、清空所有扫描记忆（已处理查询与文件 SHA）并重新启动。已发现的密钥不受影响。",
+      "restartConfirm": "停止并重开",
+      "restartSuccess": "已清空记忆并重新启动",
       "progress": "进度",
       "progressDetail": "{{done}} / {{total}} 条查询",
       "currentQuery": "当前查询",
@@ -101,7 +107,9 @@
       "description": "来自扫描器的实时事件流",
       "empty": "暂无日志",
       "connected": "已连接",
-      "disconnected": "连接断开，正在重试…"
+      "disconnected": "连接断开，正在重试…",
+      "clear": "清空日志",
+      "cleared": "日志已清空"
     },
     "keys": {
       "title": "已发现密钥",

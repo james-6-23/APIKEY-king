@@ -21,3 +21,10 @@ async def get_logs(
     return {"status": "ok", "logs": logs}
 
 
+@router.delete("")
+async def clear_logs(payload: dict = Depends(verify_token_dependency)):
+    """Clear the in-memory log buffer and notify WS subscribers."""
+    log_service.clear_logs()
+    return {"status": "ok", "message": "Logs cleared"}
+
+

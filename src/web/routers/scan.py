@@ -37,6 +37,15 @@ async def control_scan(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/restart")
+async def restart_scan(payload: dict = Depends(verify_token_dependency)):
+    """Stop the running scan, wipe scan memory, then start again."""
+    try:
+        return scan_service.restart_scan(wipe_memory=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/status")
 async def get_scan_status(payload: dict = Depends(verify_token_dependency)):
     """Get scanner status."""
