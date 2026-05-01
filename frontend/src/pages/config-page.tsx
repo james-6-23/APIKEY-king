@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProxyManager } from "@/components/config/proxy-manager";
 import { api, ApiError } from "@/lib/api";
+import { normalizeProxyBlob } from "@/lib/proxies";
 import { useToast } from "@/hooks/useToast";
 import type { AppConfig, ConfigResponse } from "@/types/api";
 
@@ -114,9 +115,10 @@ function toPayload(values: FormValues) {
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
+  const proxyBlob = normalizeProxyBlob(values.proxy ?? "");
   return {
     github_tokens: tokens,
-    proxy: values.proxy?.trim() || null,
+    proxy: proxyBlob || null,
     scan_mode: values.scan_mode,
     date_range_days: values.date_range_days,
     validators: {

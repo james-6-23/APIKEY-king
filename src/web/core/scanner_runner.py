@@ -3,6 +3,7 @@ Scanner runner for background execution.
 """
 
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, Callable
@@ -13,6 +14,21 @@ from ...extractors import ModelScopeExtractor
 from ...validators import ModelScopeValidator
 from ...models import AppConfig
 from ..database.database import db
+
+_PROXY_SCHEME_RE = re.compile(r"^(?:https?|socks5?)://", re.IGNORECASE)
+
+
+def _normalize_proxy_entry(raw: str) -> str:
+    """Ensure a proxy entry has a URL scheme. Historic UI values (and the
+    proxies_alive.txt format) ship as ``user:pass@host:port`` which requests
+    rejects with InvalidProxyURL — prepend ``http://`` when the scheme is
+    absent so round-robin keeps working."""
+    p = raw.strip()
+    if not p:
+        return ""
+    if _PROXY_SCHEME_RE.match(p):
+        return p
+    return f"http://{p}"
 
 
 class ScannerRunner:
@@ -32,9 +48,14 @@ class ScannerRunner:
             if self.config.get("proxy"):
                 # Proxy UI is a textarea (newline-separated); env-var transport
                 # is safer as comma-separated. Downstream _parse_proxy_list
-                # accepts either.
+                # accepts either. Defensive normalization: stored values from
+                # older UIs / paste-in may lack a scheme → requests refuses.
                 raw_proxy = self.config["proxy"]
-                proxy_list = [p.strip() for p in raw_proxy.replace('\n', ',').split(',') if p.strip()]
+                proxy_list = [
+                    _normalize_proxy_entry(p)
+                    for p in raw_proxy.replace('\n', ',').split(',')
+                ]
+                proxy_list = [p for p in proxy_list if p]
                 os.environ["PROXY"] = ",".join(proxy_list)
             os.environ["DATE_RANGE_DAYS"] = str(self.config.get("date_range_days", 730))
 
@@ -283,6 +304,17 @@ class ScannerRunner:
             for name, validator_config in config.validators.items():
                 validator_config.enabled = (name == 'siliconflow')
             config.scan.queries_file = "config/queries/siliconflow.txt"
+        elif scan_mode == ScanMode.DEEPSEEK_ONLY:
+            # Mirror CLI behavior (src/main.py): disable non-DeepSeek extractors
+            # and validators, and switch to the DeepSeek query file so the scanner
+            # doesn't waste GitHub quota on unrelated platforms.
+            for name, extractor_config in config.extractors.items():
+                extractor_config.enabled = (name == 'deepseek')
+                if name == 'deepseek':
+                    extractor_config.extract_only = False
+            for name, validator_config in config.validators.items():
+                validator_config.enabled = (name == 'deepseek')
+            config.scan.queries_file = "config/queries/deepseek.txt"
     
     def _create_extractors(self, config: AppConfig):
         """Create extractor instances."""

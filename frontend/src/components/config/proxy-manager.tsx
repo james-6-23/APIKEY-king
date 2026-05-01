@@ -7,35 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/useToast";
 import { copyToClipboard } from "@/lib/format";
+import { parseProxies } from "@/lib/proxies";
 
 interface Props {
   value: string;
   onChange: (next: string) => void;
-}
-
-const SCHEME_RE = /^(?:https?|socks5?):\/\//i;
-
-/** Normalize one proxy entry: add http:// if scheme is missing, return null when invalid. */
-function normalizeOne(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed || trimmed.startsWith("#")) return null;
-  // Allow comma-separated entries mixed in a single line
-  const withScheme = SCHEME_RE.test(trimmed) ? trimmed : `http://${trimmed}`;
-  // Minimal sanity check: needs a host after scheme
-  try {
-    const u = new URL(withScheme);
-    if (!u.host) return null;
-    return withScheme;
-  } catch {
-    return null;
-  }
-}
-
-function parseProxies(text: string): string[] {
-  return text
-    .split(/[\n,]+/)
-    .map((line) => normalizeOne(line))
-    .filter((v): v is string => Boolean(v));
 }
 
 export function ProxyManager({ value, onChange }: Props) {
@@ -97,6 +73,16 @@ export function ProxyManager({ value, onChange }: Props) {
         removed: proxies.length - unique.length,
       }),
     );
+  };
+
+  const handleBlur = () => {
+    // Normalize on blur so the textarea mirrors what will actually be saved
+    // (adds http:// to scheme-less entries, drops invalid ones).
+    const parsed = parseProxies(value);
+    const normalized = parsed.join("\n");
+    if (normalized !== value.trim()) {
+      replaceValue(parsed);
+    }
   };
 
   const handleClear = () => {
@@ -179,6 +165,7 @@ export function ProxyManager({ value, onChange }: Props) {
         rows={6}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={handleBlur}
         placeholder={"http://127.0.0.1:7890\nuser:pass@proxy.example.com:3128"}
         className="mono text-xs"
         spellCheck={false}
