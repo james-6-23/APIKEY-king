@@ -1,12 +1,142 @@
-# DeepSeek 专项查询规则
-# DeepSeek 密钥格式: sk-[a-f0-9]{32}
+# DeepSeek API 密钥搜索查询
+# 针对 DeepSeek 平台优化的搜索策略
+# 密钥格式: sk-[a-f0-9]{32}
 
-# 通过域名定位
+# ────────────────────────────────────────
+# 基础搜索 - DeepSeek API URL
+# ────────────────────────────────────────
 "https://api.deepseek.com" in:file
+"https://api.deepseek.com/v1" in:file
+"api.deepseek.com/v1" in:file
 "api.deepseek.com" in:file
-"deepseek" AND "api_key" in:file
-"deepseek" AND "Bearer" in:file
+"platform.deepseek.com" in:file
+"chat.deepseek.com" in:file
 
-# SDK / 配置
-"deepseek" in:file filename:.env
+# ────────────────────────────────────────
+# 密钥 / 令牌变量名
+# ────────────────────────────────────────
+"DEEPSEEK_API_KEY" in:file
+"deepseek_api_key" in:file
+"DEEPSEEK_KEY" in:file
+"DEEPSEEK_TOKEN" in:file
+"DEEPSEEK_SECRET" in:file
+"DS_API_KEY" in:file
+"DS_KEY" in:file
+"sk-" AND "deepseek" in:file
+"sk-" AND "api.deepseek.com" in:file
+
+# ────────────────────────────────────────
+# 常见配置模式
+# ────────────────────────────────────────
 "base_url" AND "deepseek" in:file
+"baseURL" AND "deepseek" in:file
+"base_url" AND "api.deepseek.com" in:file
+"api_key" AND "deepseek" in:file
+"apiKey" AND "deepseek" in:file
+"OpenAI" AND "deepseek" in:file
+"OPENAI_API_BASE" AND "deepseek" in:file
+"OPENAI_BASE_URL" AND "deepseek" in:file
+"OPENAI_API_KEY" AND "deepseek" in:file
+"openai.api_base" AND "deepseek" in:file
+"openai.base_url" AND "deepseek" in:file
+"process.env" AND "deepseek" in:file
+
+# ────────────────────────────────────────
+# 常见文件类型
+# ────────────────────────────────────────
+"deepseek" in:file filename:.env
+"deepseek" in:file extension:py
+"deepseek" in:file extension:js
+"deepseek" in:file extension:ts
+"deepseek" in:file extension:json
+"deepseek" in:file extension:yml
+"deepseek" in:file extension:yaml
+"deepseek" in:file extension:toml
+"deepseek" in:file extension:ini
+"deepseek" in:file filename:config
+"deepseek" in:file filename:settings
+"DEEPSEEK" in:file filename:.env
+
+# ────────────────────────────────────────
+# 官方 / OpenAI 兼容 SDK 代码模式
+# ────────────────────────────────────────
+"client = OpenAI" AND "deepseek" in:file
+"from openai import OpenAI" AND "deepseek" in:file
+"import OpenAI" AND "deepseek" in:file
+"new OpenAI" AND "deepseek" in:file
+
+# ────────────────────────────────────────
+# API 端点
+# ────────────────────────────────────────
+"/v1/chat/completions" AND "deepseek" in:file
+"/v1/completions" AND "deepseek" in:file
+"/v1/embeddings" AND "deepseek" in:file
+"/user/balance" AND "deepseek" in:file
+"Authorization: Bearer sk-" AND "deepseek" in:file
+"Bearer" AND "api.deepseek.com" in:file
+
+# ────────────────────────────────────────
+# 热门模型名（v3 / r1 / coder / math / reasoner）
+# ────────────────────────────────────────
+"deepseek-chat" in:file
+"deepseek-coder" in:file
+"deepseek-reasoner" in:file
+"deepseek-v3" in:file
+"deepseek-v2" in:file
+"deepseek-v2.5" in:file
+"deepseek-r1" in:file
+"deepseek-math" in:file
+"deepseek-coder-v2" in:file
+"deepseek-ai/DeepSeek" in:file
+
+# ────────────────────────────────────────
+# 命令行 / curl 示例
+# ────────────────────────────────────────
+"curl" AND "api.deepseek.com" in:file
+"curl" AND "deepseek" AND "Authorization" in:file
+
+# ────────────────────────────────────────
+# 变体 / 拼写
+# ────────────────────────────────────────
+"deep_seek" in:file
+"deep-seek" in:file
+"DeepSeek" in:file
+"DEEPSEEK" in:file
+"深度求索" in:file
+"深度搜索" in:file
+
+# ────────────────────────────────────────
+# 流行网关 / 中转工具
+# ────────────────────────────────────────
+"OneAPI" AND "deepseek" in:file
+"NewAPI" AND "deepseek" in:file
+"Cherry Studio" AND "deepseek" in:file
+"NextChat" AND "deepseek" in:file
+"LobeChat" AND "deepseek" in:file
+"ChatGPT-Next-Web" AND "deepseek" in:file
+
+# ────────────────────────────────────────
+# LLM 框架
+# ────────────────────────────────────────
+"langchain" AND "deepseek" in:file
+"langchain_deepseek" in:file
+"llama_index" AND "deepseek" in:file
+"dify" AND "deepseek" in:file
+"openai-compatible" AND "deepseek" in:file
+
+# ────────────────────────────────────────
+# 配置 / 部署
+# ────────────────────────────────────────
+"model_config" AND "deepseek" in:file
+"llm_config" AND "deepseek" in:file
+"ai_config" AND "deepseek" in:file
+"docker-compose" AND "deepseek" in:file
+"k8s" AND "deepseek" in:file
+"deployment" AND "deepseek" in:file
+
+# ────────────────────────────────────────
+# README / 文档
+# ────────────────────────────────────────
+"README" AND "deepseek" in:file
+"setup" AND "deepseek" in:file
+"installation" AND "deepseek" in:file
